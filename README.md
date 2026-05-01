@@ -70,7 +70,7 @@ My work combines **strong backend logic, responsive frontend systems, and clean 
 
 ## 📬 Contact
 
-- Email: your-email@example.com  
+- Email: mmusmanlab@gmail.com   
 - Location: Nigeria  
 - Open to freelance & collaboration opportunities  
 
@@ -78,7 +78,7 @@ My work combines **strong backend logic, responsive frontend systems, and clean 
 
 ## ⚡ Philosophy
 
-> “Build systems that are simple, scalable, and meaningful.”
+> “Building secure, scalable, and efficient digital solutions.”
 
 ---
 

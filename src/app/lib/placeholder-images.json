@@ -1,0 +1,35 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "profile-pic",
+      "description": "Muhammad M Usman professional photo",
+      "imageUrl": "/lib/mmusmanlab.webp",
+      "imageHint": "professional developer"
+    },
+    {
+      "id": "amtech-shop",
+      "description": "Amtech Shop E-commerce Mobile App",
+      "imageUrl": "https://picsum.photos/seed/amtech/800/600",
+      "imageHint": "mobile ecommerce"
+    },
+    {
+      "id": "leftly",
+      "description": "Leftly Budget Tracker Mobile App",
+      "imageUrl": "https://picsum.photos/seed/leftly/800/600",
+      "imageHint": "finance app"
+    },
+    {
+      "id": "praxivon",
+      "description": "Praxivon Educational Web Platform",
+      "imageUrl": "https://picsum.photos/seed/praxivon/800/600",
+      "imageHint": "educational website"
+    },
+    {
+      "id": "solar-power",
+      "description": "Solar and Electrical Installation Project",
+      "imageUrl": "https://picsum.photos/seed/solar/800/600",
+      "imageHint": "solar panels"
+    }
+  ]
+}

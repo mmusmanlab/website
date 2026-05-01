@@ -1,6 +1,6 @@
 # Muhammad M. Usman
 
-<img src="./src/lib/mmusmanlab.webp" alt="Muhammad M. Usman" width="320" height="360" />
+<img src="./src/lib/mmusmanlab.webp" alt="Muhammad M. Usman" width="340" height="400" />
 
 ## 👨‍💻 Full-Stack Software Engineer
 

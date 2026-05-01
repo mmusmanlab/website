@@ -1,6 +1,6 @@
 # Muhammad M. Usman
 
-![Muhammad M. Usman](./src/lib/mmusmanlab.webp)
+<img src="./src/lib/mmusmanlab.webp" alt="Muhammad M. Usman" width="300" height="300" />
 
 ## 👨‍💻 Full-Stack Software Engineer
 
@@ -70,7 +70,7 @@ My work combines **strong backend logic, responsive frontend systems, and clean 
 
 ## 📬 Contact
 
-- Email: mmusmanlab@gmail.com   
+- Email: mmusmanlab@gmail.com  
 - Location: Nigeria  
 - Open to freelance & collaboration opportunities  
 
@@ -78,10 +78,10 @@ My work combines **strong backend logic, responsive frontend systems, and clean 
 
 ## ⚡ Philosophy
 
-> “Building secure, scalable, and efficient digital solutions.”
+> "Building secure, scalable, and efficient digital solutions."
 
 ---
 
 ## 🛠️ Tech Mindset
 
-I don’t just write code — I build systems that last, scale, and solve real problems.
+I don't just write code — I build systems that last, scale, and solve real problems.

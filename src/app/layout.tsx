@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 export const metadata: Metadata = {
   title: 'Muhammad M. Usman | Full-Stack Software Engineer',
   description: 'Professional portfolio for Muhammad M. Usman - Full-Stack Software Engineer specializing in modern web and mobile applications with React, Next.js, and Expo.',
+  metadataBase: new URL("https://mmusmanlab.com"),
 };
 
 export default function RootLayout({

@@ -4,7 +4,7 @@
 
 ## 👨‍💻 Full-Stack Software Engineer
 
-A passionate Full-Stack Software Engineer specializing in modern web and mobile development using **React, Next.js, Node.js, and Expo**.  
+A passionate Full-Stack Software Engineer specializing in modern web and mobile development using **Node.js, React, Next.js, and Expo**.  
 I build scalable, performant, and user-focused digital products with clean architecture and strong engineering principles.
 
 ---

@@ -71,7 +71,7 @@ My work combines **strong backend logic, responsive frontend systems, and clean 
 ## 📬 Contact
 
 - Email: mmusmanlab@gmail.com  
-- Location: Nigeria  
+- Location: Bichi, Kano state, Nigeria  
 - Open to freelance & collaboration opportunities  
 
 ---

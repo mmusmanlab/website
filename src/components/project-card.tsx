@@ -18,7 +18,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
       <div className="relative aspect-[16/9] overflow-hidden">
         <Image
           src={project.image}
-          alt={project.name}
+          alt={project.imageAlt ?? `${project.name} project placeholder image`}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-110"
           data-ai-hint="project screenshot"

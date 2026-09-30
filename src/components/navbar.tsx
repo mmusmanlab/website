@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { User, Layout, Mail, Layers, Menu, X } from "lucide-react";
+import { User, Layout, Mail, Layers, Menu, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Sheet, 
@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 const navLinks = [
   { href: "/", label: "Home", icon: Layers },
   { href: "/projects", label: "Projects", icon: Layout },
+  { href: "/articles", label: "Articles", icon: BookOpen },
   { href: "/about", label: "About", icon: User },
   { href: "/contact", label: "Contact", icon: Mail },
 ];
@@ -54,7 +55,7 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-10">
           {navLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href;
+            const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(`${link.href}/`));
             return (
               <Link
                 key={link.href}
@@ -94,7 +95,7 @@ export function Navbar() {
                   <div className="flex flex-col gap-1 p-4">
                     {navLinks.map((link, idx) => {
                       const Icon = link.icon;
-                      const isActive = pathname === link.href;
+                      const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(`${link.href}/`));
                       return (
                         <Link
                           key={link.href}

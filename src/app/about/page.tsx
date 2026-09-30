@@ -1,10 +1,16 @@
-"use client";
-
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Code2, GraduationCap, Laptop, Rocket, Award, BookOpen } from "lucide-react";
 import profilePic from "@/lib/mmusmanlab.webp";
+
+export const metadata: Metadata = {
+  title: "About Muhammad M. Usman — Software Engineer",
+  description:
+    "Learn about Muhammad M. Usman's work with web and mobile application development, React, Next.js, React Native, Expo and technical systems.",
+  alternates: { canonical: "/about" },
+};
 
 export default function AboutPage() {
   const experiences = [

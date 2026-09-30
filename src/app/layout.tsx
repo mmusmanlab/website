@@ -5,9 +5,35 @@ import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Muhammad M. Usman | Full-Stack Software Engineer',
-  description: 'Professional portfolio for Muhammad M. Usman - Full-Stack Software Engineer specializing in modern web and mobile applications with React, Next.js, and Expo.',
-  metadataBase: new URL("https://mmusmanlab.vercel.app"),
+  metadataBase: new URL('https://mmusmanlab.vercel.app'),
+  title: {
+    default: 'Muhammad M. Usman | Software Engineer',
+    template: '%s | Muhammad M. Usman',
+  },
+  description:
+    'Muhammad M. Usman is a software engineer building web, mobile and full-stack applications with Next.js, React, React Native, Expo, TypeScript and Node.js.',
+  authors: [{ name: 'Muhammad M. Usman' }],
+  creator: 'Muhammad M. Usman',
+  publisher: 'Muhammad M. Usman',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'MMUsmanLab',
+    title: 'Muhammad M. Usman | Software Engineer',
+    description:
+      'Web, mobile and full-stack applications built with Next.js, React, React Native, Expo, TypeScript and Node.js.',
+    url: 'https://mmusmanlab.vercel.app',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Muhammad M. Usman | Software Engineer',
+    description:
+      'Web, mobile and full-stack applications built with Next.js, React, React Native, Expo, TypeScript and Node.js.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

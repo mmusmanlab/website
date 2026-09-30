@@ -1,187 +1,134 @@
-"use client";
-
-import { useParams, useRouter } from "next/navigation";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { projects } from "@/app/lib/data";
-import { Button } from "@/components/ui/button";
+import { articles } from "@/app/lib/articles";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, ExternalLink, Github } from "lucide-react";
+import Breadcrumbs from "@/components/breadcrumbs";
 
-export default function ProjectDetailsPage() {
-  const { id } = useParams();
-  const router = useRouter();
+const baseUrl = "https://mmusmanlab.vercel.app";
 
-  const project = projects.find((p) => p.id === id);
+type ProjectPageProps = {
+  params: Promise<{ id: string }>;
+};
 
-  if (!project) {
-    return (
-      <div className="container mx-auto px-4 py-32 text-center">
-        <h1 className="text-2xl font-bold mb-4">Project not found</h1>
-        <Button onClick={() => router.push("/projects")}>
-          Back to Projects
-        </Button>
-      </div>
-    );
-  }
+export function generateStaticParams() {
+  return projects.map((project) => ({ id: project.id }));
+}
+
+export async function generateMetadata({ params }: ProjectPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const project = projects.find((entry) => entry.id === id);
+  if (!project) return {};
+
+  const title = `${project.name} — ${project.technologies.slice(0, 3).join(", ")} Project`;
+  const description = project.overview ?? project.shortDescription;
+  const canonical = `/projects/${project.id}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { type: "article", title, description, url: canonical },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
+
+export default async function ProjectDetailsPage({ params }: ProjectPageProps) {
+  const { id } = await params;
+  const project = projects.find((entry) => entry.id === id);
+  if (!project) notFound();
+
+  const relatedArticles = articles.filter((article) => article.relatedProjects.includes(project.id));
+  const relatedProjects = projects.filter((entry) => entry.id !== project.id).slice(0, 3);
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    name: project.name,
+    description: project.overview ?? project.shortDescription,
+    url: `${baseUrl}/projects/${project.id}`,
+    author: { "@type": "Person", name: "Muhammad M. Usman", url: `${baseUrl}/about` },
+    keywords: project.technologies.join(", "),
+  };
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <Link
-        href="/projects"
-        className="inline-flex items-center text-muted-foreground hover:text-primary mb-8 transition-colors"
-      >
-        <ArrowLeft size={18} className="mr-2" />
-        Back to Projects
-      </Link>
+      <Breadcrumbs items={[{ label: "Projects", href: "/projects" }, { label: project.name }]} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* LEFT CONTENT */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mt-8">
         <div className="lg:col-span-8">
-          {/* IMAGE */}
           <div className="relative aspect-[16/9] rounded-3xl overflow-hidden border mb-10 shadow-2xl">
-            <Image
-              src={project.image}
-              alt={project.name}
-              fill
-              className="object-cover"
-              priority
-            />
+            <Image src={project.image} alt={project.imageAlt ?? `${project.name} project placeholder image`} fill className="object-cover" priority />
           </div>
 
-          {/* BADGES */}
           <div className="flex flex-wrap gap-2 mb-6">
-            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none px-3 py-1">
-              {project.category}
-            </Badge>
-
-            {project.technologies.map((tech) => (
-              <Badge
-                key={tech}
-                variant="outline"
-                className="font-normal border-muted-foreground/30"
-              >
-                {tech}
-              </Badge>
+            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none px-3 py-1">{project.category}</Badge>
+            {project.technologies.map((technology) => (
+              <Badge key={technology} variant="outline" className="font-normal border-muted-foreground/30">{technology}</Badge>
             ))}
           </div>
 
-          {/* TITLE */}
-          <h1 className="font-headline text-4xl md:text-5xl font-bold mb-6 tracking-tight">
-            {project.name}
-          </h1>
+          <h1 className="font-headline text-4xl md:text-5xl font-bold mb-6 tracking-tight">{project.name}</h1>
+          <p className="text-muted-foreground text-lg leading-relaxed mb-12">{project.overview ?? project.fullDescription}</p>
 
-          {/* DESCRIPTION */}
-          <div className="prose prose-invert max-w-none mb-12">
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              {project.fullDescription}
-            </p>
-          </div>
+          <section className="mb-10">
+            <h2 className="font-headline text-2xl font-bold mb-4">Overview</h2>
+            <p className="text-muted-foreground leading-relaxed">{project.fullDescription}</p>
+          </section>
 
-          {/* PROJECT INSIGHT (REPLACED AI SECTION) */}
-          <Card className="p-8 border-primary/10 bg-muted/20 rounded-2xl">
-            <div className="mb-6">
-              <h3 className="font-headline text-xl font-bold flex items-center gap-2">
-                <span className="text-primary">●</span>
-                Project Impact & Engineering Insight
-              </h3>
-              <p className="text-muted-foreground text-sm mt-2">
-                A breakdown of the architecture, performance focus, and real-world value of this project.
-              </p>
-            </div>
+          {project.features && (
+            <section className="mb-10">
+              <h2 className="font-headline text-2xl font-bold mb-4">Key Features</h2>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                {project.features.map((feature) => <li key={feature}>{feature}</li>)}
+              </ul>
+            </section>
+          )}
 
-            <div className="space-y-4 text-sm md:text-base text-muted-foreground leading-relaxed">
-              <p>
-                This project was designed with a focus on scalability, clean architecture,
-                and modern UI performance. It demonstrates practical implementation of
-                full-stack development principles using{" "}
-                {project.technologies.join(", ")}.
-              </p>
+          <section className="mb-12">
+            <h2 className="font-headline text-2xl font-bold mb-4">Technology Stack</h2>
+            <ul className="flex flex-wrap gap-2" aria-label="Technologies">
+              {project.technologies.map((technology) => (
+                <li key={technology}><Badge variant="outline">{technology}</Badge></li>
+              ))}
+            </ul>
+          </section>
 
-              <p>
-                The system emphasizes reusable components, efficient state handling,
-                and responsive design patterns optimized for both mobile and desktop environments.
-              </p>
+          {relatedArticles.length > 0 && (
+            <section className="border-t border-border/70 pt-8 mb-10">
+              <h2 className="font-headline text-2xl font-bold mb-5">Related Articles</h2>
+              <ul className="space-y-3">
+                {relatedArticles.map((article) => (
+                  <li key={article.slug}><Link className="text-primary hover:underline" href={`/articles/${article.slug}`}>{article.title}</Link></li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-              <p>
-                From a development standpoint, this project reflects strong engineering practices
-                including modular design, API integration structure, and production-ready deployment considerations.
-              </p>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {project.technologies.slice(0, 6).map((tech) => (
-                <Badge
-                  key={tech}
-                  variant="outline"
-                  className="border-muted-foreground/30"
-                >
-                  {tech}
-                </Badge>
+          <section className="border-t border-border/70 pt-8">
+            <h2 className="font-headline text-2xl font-bold mb-5">Related Projects</h2>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {relatedProjects.map((related) => (
+                <Card key={related.id} className="p-5">
+                  <h3 className="font-bold mb-2"><Link className="hover:text-primary" href={`/projects/${related.id}`}>{related.name}</Link></h3>
+                  <p className="text-sm text-muted-foreground">{related.shortDescription}</p>
+                </Card>
               ))}
             </div>
-          </Card>
+          </section>
         </div>
 
-        {/* RIGHT SIDEBAR */}
-        <div className="lg:col-span-4 space-y-8">
+        <aside className="lg:col-span-4">
           <Card className="p-6 sticky top-24">
-            <h3 className="font-headline text-lg font-bold mb-6">
-              Project Links
-            </h3>
-
-            <div className="flex flex-col gap-4">
-              {project.demoUrl && (
-                <Button className="w-full h-12" asChild>
-                  <a
-                    href={project.demoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Live Demo <ExternalLink size={18} className="ml-2" />
-                  </a>
-                </Button>
-              )}
-
-              {project.repoUrl && (
-                <Button variant="outline" className="w-full h-12" asChild>
-                  <a
-                    href={project.repoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Source Code <Github size={18} className="ml-2" />
-                  </a>
-                </Button>
-              )}
-            </div>
-
-            <div className="mt-8 pt-8 border-t space-y-6">
-              <div>
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                  Category
-                </h4>
-                <p className="font-medium">{project.category} Application</p>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                  Role
-                </h4>
-                <p className="font-medium">Lead Full Stack Developer</p>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                  Timeline
-                </h4>
-                <p className="font-medium">3 Months Development</p>
-              </div>
-            </div>
+            <h2 className="font-headline text-lg font-bold mb-5">Project Details</h2>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase mb-2">Category</h3>
+            <p className="font-medium">{project.category}</p>
           </Card>
-        </div>
+        </aside>
       </div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
     </div>
   );
 }

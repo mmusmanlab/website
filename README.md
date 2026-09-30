@@ -66,6 +66,18 @@ My work combines **strong backend logic, responsive frontend systems, and clean 
 
 👉 https://mmusmanlab.vercel.app
 
+## Contact Form Delivery
+
+The contact form sends submissions through the Resend email API. Create a Resend API key and verify the sender domain in Resend, then configure these server-side environment variables in `.env.local` for local development and in the Vercel project settings for deployment:
+
+```env
+RESEND_API_KEY=re_...
+CONTACT_TO_EMAIL=mmusmanlab@gmail.com
+CONTACT_FROM_EMAIL=MMUsmanLab <contact@your-verified-domain.com>
+```
+
+Replace the example in `CONTACT_FROM_EMAIL` with an address on a domain you have actually verified in Resend; `your-verified-domain.com` is only a placeholder. Resend's `onboarding@resend.dev` sender is suitable only for limited tests to your own Resend account email. Keep `RESEND_API_KEY` server-side and never prefix it with `NEXT_PUBLIC_`. Without valid values the endpoint returns a configuration error instead of reporting a false success.
+
 ---
 
 ## 📬 Contact

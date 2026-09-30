@@ -12,17 +12,36 @@ export default function ContactForm() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setIsSent(true);
-    toast({
-      title: "Message Sent!",
-      description: "Thank you for reaching out, Muhammad. I'll get back to you shortly.",
-    });
+    setSubmitError("");
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(formData.entries())),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Your message could not be sent. Please try again.");
+      }
+
+      setIsSent(true);
+      form.reset();
+      toast({ title: "Message sent", description: "Your message was delivered. Thank you for reaching out." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Your message could not be sent. Please try again.";
+      setSubmitError(message);
+      toast({ title: "Message not sent", description: message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -55,14 +74,16 @@ export default function ContactForm() {
               <div className="text-center py-12 space-y-6 animate-in zoom-in-95 duration-500">
                 <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 text-primary mb-4"><CheckCircle2 size={48} /></div>
                 <h2 className="font-headline text-3xl font-bold">Message Delivered!</h2>
-                <p className="text-muted-foreground text-lg max-w-xs mx-auto">Your enquiry has been securely transmitted. I typically respond within 24 hours.</p>
+                <p className="text-muted-foreground text-lg max-w-xs mx-auto">Your message was delivered. Thank you for reaching out.</p>
                 <Button onClick={() => setIsSent(false)} variant="outline" className="h-12 px-8 rounded-xl">Send Another Message</Button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-3"><label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</label><Input id="name" placeholder="Enter your name" required className="h-14 bg-background/50 focus:ring-primary border-muted-foreground/20 rounded-2xl text-lg" /></div>
-                <div className="space-y-3"><label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Address</label><Input id="email" type="email" placeholder="example@mail.com" required className="h-14 bg-background/50 focus:ring-primary border-muted-foreground/20 rounded-2xl text-lg" /></div>
-                <div className="space-y-3"><label htmlFor="message" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Your Message</label><Textarea id="message" placeholder="How can I help you today?" required className="min-h-[160px] bg-background/50 focus:ring-primary border-muted-foreground/20 rounded-2xl text-lg resize-none" /></div>
+                <div className="space-y-3"><label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</label><Input id="name" name="name" autoComplete="name" maxLength={100} placeholder="Enter your name" required className="h-14 bg-background/50 focus:ring-primary border-muted-foreground/20 rounded-2xl text-lg" /></div>
+                <div className="space-y-3"><label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Address</label><Input id="email" name="email" type="email" autoComplete="email" maxLength={254} placeholder="example@mail.com" required className="h-14 bg-background/50 focus:ring-primary border-muted-foreground/20 rounded-2xl text-lg" /></div>
+                <div className="space-y-3"><label htmlFor="message" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Your Message</label><Textarea id="message" name="message" minLength={10} maxLength={5000} placeholder="How can I help you today?" required className="min-h-[160px] bg-background/50 focus:ring-primary border-muted-foreground/20 rounded-2xl text-lg resize-none" /></div>
+                <div className="absolute -left-[10000px]" aria-hidden="true"><label htmlFor="website">Leave this field empty</label><input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" /></div>
+                {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
                 <Button type="submit" size="lg" className="w-full h-16 rounded-2xl text-xl font-extrabold transition-all shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95" disabled={isSubmitting}>
                   {isSubmitting ? <><Loader2 className="mr-2 animate-spin" size={24} />Transmitting...</> : <>Send Message<Send className="ml-2" size={20} /></>}
                 </Button>

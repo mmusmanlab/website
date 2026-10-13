@@ -2,6 +2,8 @@ import fs from "fs/promises";
 import path from "path";
 import { Project } from "@/app/lib/data";
 
+export type { Project };
+
 const initialProjects: Project[] = [
   {
     id: "amtech-shop",

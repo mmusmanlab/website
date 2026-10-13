@@ -37,6 +37,10 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  if (pathname.startsWith("/dashboard")) {
+    return null;
+  }
+
   return (
     <nav className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-300 h-20 flex items-center border-b",
@@ -44,7 +48,7 @@ export function Navbar() {
         ? "bg-background/90 backdrop-blur-xl border-border/50 py-2 shadow-sm" 
         : "bg-transparent border-transparent py-4"
     )}>
-      <div className="container mx-auto px-6 flex items-center justify-between">
+      <div className="w-full px-6 sm:px-8 md:px-12 flex items-center justify-between">
         <Link href="/" className="group flex items-center relative z-[60]">
           <span className="font-headline text-2xl font-extrabold tracking-tighter">
             MM<span className="text-primary group-hover:text-primary transition-colors">Usman</span>

@@ -1,8 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Github, Linkedin, Twitter, ArrowRight } from "lucide-react";
 
 export function Footer() {
+  const pathname = usePathname();
   const handle = "mmusmanlab";
+
+  if (pathname?.startsWith("/dashboard")) {
+    return null;
+  }
 
   return (
     <footer className="border-t py-14 bg-background">

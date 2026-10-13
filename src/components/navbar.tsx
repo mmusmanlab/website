@@ -52,7 +52,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-10">
+        <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(`${link.href}/`));
@@ -73,6 +73,9 @@ export function Navbar() {
               </Link>
             );
           })}
+          <Button size="sm" className="rounded-xl font-bold shadow-md shadow-primary/20 px-5 ml-2" asChild>
+            <Link href="/contact">Consultation</Link>
+          </Button>
         </div>
 
         {/* Mobile Menu Trigger */}

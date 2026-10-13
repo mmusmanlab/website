@@ -1,5 +1,5 @@
-const fs = require('node:fs/promises');
-const path = require('node:path');
+const fs = require('fs/promises');
+const path = require('path');
 
 async function readContactMessages(filePath = path.join(process.cwd(), 'src/lib/contact-messages.json')) {
   try {

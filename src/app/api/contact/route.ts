@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+const { appendContactMessage } = require("@/lib/contact-storage");
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Please submit a valid form." }, { status: 400 });
   }
 
-  const { name, email, message, website } = payload as Record<string, unknown>;
+  const { name, email, message, website, projectType, company } = payload as Record<string, unknown>;
   if (typeof website === "string" && website.trim()) {
     return NextResponse.json({ success: true });
   }
@@ -54,22 +55,40 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  const to = process.env.CONTACT_TO_EMAIL;
-  const from = process.env.CONTACT_FROM_EMAIL;
-  if (!apiKey || !to || !from) {
-    return NextResponse.json(
-      { error: "Contact delivery is not configured yet. Please email mmusmanlab@gmail.com directly." },
-      { status: 503 }
-    );
-  }
+  const safeProjectType = typeof projectType === "string" && projectType.trim() ? projectType.trim().slice(0, 80) : "General Software Inquiry";
+  const safeCompany = typeof company === "string" && company.trim() ? company.trim().slice(0, 100) : "N/A";
 
   const safeName = name.trim().replace(/[\r\n]+/g, " ");
   const safeEmail = email.trim();
   const safeMessage = message.trim();
+
+  // Save to persistent contact storage for the private dashboard
+  try {
+    await appendContactMessage(undefined, {
+      name: safeName,
+      email: safeEmail,
+      message: safeMessage,
+      projectType: safeProjectType,
+      company: safeCompany,
+    });
+  } catch (err) {
+    console.warn("Could not save message to local storage:", err);
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const to = process.env.CONTACT_TO_EMAIL;
+  const from = process.env.CONTACT_FROM_EMAIL;
+  if (!apiKey || !to || !from) {
+    // Stored locally in dashboard even without external email credentials
+    return NextResponse.json({ success: true, note: "Inquiry saved to dashboard." });
+  }
+
   const safeNameHtml = escapeHtml(safeName);
   const safeEmailHtml = escapeHtml(safeEmail);
   const safeMessageHtml = escapeHtml(safeMessage);
+  const safeProjectTypeHtml = escapeHtml(safeProjectType);
+  const safeCompanyHtml = escapeHtml(safeCompany);
+
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -81,28 +100,36 @@ export async function POST(request: Request) {
         from,
         to: [to],
         reply_to: safeEmail,
-        subject: `Portfolio contact from ${safeName}`,
-        text: `New portfolio enquiry\n\nName: ${safeName}\nEmail: ${safeEmail}\n\nMessage:\n${safeMessage}\n\nReply directly to this email to respond.`,
+        subject: `Project inquiry from ${safeName} (${safeProjectType})`,
+        text: `New software project enquiry\n\nName: ${safeName}\nEmail: ${safeEmail}\nProject Type: ${safeProjectType}\nOrganization/Company: ${safeCompany}\n\nMessage:\n${safeMessage}\n\nReply directly to this email to respond.`,
         html: `
           <div style="margin:0;padding:32px 16px;background:#f3f5f7;font-family:Arial,Helvetica,sans-serif;color:#18212b;">
             <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e2e7ec;border-radius:12px;overflow:hidden;">
               <div style="padding:24px 30px;background:#101820;color:#ffffff;">
                 <p style="margin:0 0 8px;color:#85d2c1;font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">MMUsmanLab</p>
-                <h1 style="margin:0;font-size:23px;line-height:1.35;font-weight:700;">New portfolio enquiry</h1>
+                <h1 style="margin:0;font-size:23px;line-height:1.35;font-weight:700;">New Software Project Enquiry</h1>
               </div>
               <div style="padding:28px 30px 32px;">
                 <p style="margin:0 0 22px;color:#56616d;font-size:15px;line-height:1.6;">Someone has sent a message through the contact form.</p>
                 <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 24px;">
                   <tr>
-                    <td style="width:90px;padding:10px 0;color:#697582;font-size:13px;font-weight:700;vertical-align:top;">Name</td>
+                    <td style="width:120px;padding:10px 0;color:#697582;font-size:13px;font-weight:700;vertical-align:top;">Name</td>
                     <td style="padding:10px 0;color:#18212b;font-size:14px;line-height:1.5;">${safeNameHtml}</td>
                   </tr>
                   <tr>
                     <td style="padding:10px 0;border-top:1px solid #edf0f2;color:#697582;font-size:13px;font-weight:700;vertical-align:top;">Email</td>
                     <td style="padding:10px 0;border-top:1px solid #edf0f2;font-size:14px;line-height:1.5;"><a href="mailto:${safeEmailHtml}" style="color:#147d70;text-decoration:underline;">${safeEmailHtml}</a></td>
                   </tr>
+                  <tr>
+                    <td style="padding:10px 0;border-top:1px solid #edf0f2;color:#697582;font-size:13px;font-weight:700;vertical-align:top;">Project Type</td>
+                    <td style="padding:10px 0;border-top:1px solid #edf0f2;color:#18212b;font-size:14px;line-height:1.5;">${safeProjectTypeHtml}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:10px 0;border-top:1px solid #edf0f2;color:#697582;font-size:13px;font-weight:700;vertical-align:top;">Organization</td>
+                    <td style="padding:10px 0;border-top:1px solid #edf0f2;color:#18212b;font-size:14px;line-height:1.5;">${safeCompanyHtml}</td>
+                  </tr>
                 </table>
-                <h2 style="margin:0 0 10px;color:#18212b;font-size:14px;">Message</h2>
+                <h2 style="margin:0 0 10px;color:#18212b;font-size:14px;">Message &amp; Requirements</h2>
                 <div style="padding:16px 18px;border-left:3px solid #27a18e;border-radius:4px;background:#f5f8f8;color:#28343e;font-size:14px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;">${safeMessageHtml}</div>
                 <p style="margin:24px 0 0;color:#697582;font-size:12px;line-height:1.6;">Reply to this email to respond directly to ${safeNameHtml}.</p>
               </div>

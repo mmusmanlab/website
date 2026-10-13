@@ -1,34 +1,35 @@
 import type { MetadataRoute } from "next";
 import { projects } from "@/app/lib/data";
-import { articles } from "@/app/lib/articles";
+import { getPublishedArticles } from "@/lib/articles-store";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://mmusmanlab.vercel.app";
 
   const staticRoutes = [
-    { route: "", lastModified: "2026-09-30", priority: 1 },
-    { route: "/about", lastModified: "2026-09-30", priority: 0.8 },
-    { route: "/contact", lastModified: "2026-09-30", priority: 0.6 },
-    { route: "/projects", lastModified: "2026-09-30", priority: 0.8 },
-    { route: "/articles", lastModified: "2026-09-30", priority: 0.8 },
+    { route: "", lastModified: new Date().toISOString().split("T")[0], priority: 1.0 },
+    { route: "/about", lastModified: "2026-10-12", priority: 0.8 },
+    { route: "/contact", lastModified: "2026-10-12", priority: 0.7 },
+    { route: "/projects", lastModified: "2026-10-12", priority: 0.9 },
+    { route: "/articles", lastModified: new Date().toISOString().split("T")[0], priority: 0.9 },
   ];
 
-  const staticUrls = staticRoutes.map(({ route, lastModified, priority }) => ({
+  const staticUrls: MetadataRoute.Sitemap = staticRoutes.map(({ route, lastModified, priority }) => ({
     url: `${baseUrl}${route}`,
     lastModified,
     priority,
   }));
 
-  const projectUrls = projects.map((project) => ({
+  const projectUrls: MetadataRoute.Sitemap = projects.map((project) => ({
     url: `${baseUrl}/projects/${project.id}`,
     lastModified: project.lastModified ?? "2026-09-30",
-    priority: 0.7,
+    priority: 0.8,
   }));
 
-  const articleUrls: MetadataRoute.Sitemap = articles.map((article) => ({
+  const publishedArticles = await getPublishedArticles();
+  const articleUrls: MetadataRoute.Sitemap = publishedArticles.map((article) => ({
     url: `${baseUrl}/articles/${article.slug}`,
-    lastModified: article.updatedAt,
-    priority: 0.7,
+    lastModified: article.updatedAt || article.publishedAt,
+    priority: 0.8,
   }));
 
   return [...staticUrls, ...projectUrls, ...articleUrls];

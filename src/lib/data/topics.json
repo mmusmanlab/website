@@ -1,0 +1,30 @@
+[
+  {
+    "id": "top-1",
+    "topic": "React Native Expo Audio & Media Background Playback on Android 14",
+    "category": "Mobile Development",
+    "priority": 8,
+    "used": false
+  },
+  {
+    "id": "top-2",
+    "topic": "Full-Stack End-to-End Type Safety with Zod and TypeScript Route Handlers",
+    "category": "Software Engineering",
+    "priority": 9,
+    "used": false
+  },
+  {
+    "id": "top-3",
+    "topic": "Next.js Dynamic Route Metadata Generation and Canonical SEO Best Practices",
+    "category": "Web Development",
+    "priority": 8,
+    "used": false
+  },
+  {
+    "id": "top-4",
+    "topic": "PostgreSQL Connection Pooling and Latency Reduction in Serverless Next.js",
+    "category": "Backend Engineering",
+    "priority": 9,
+    "used": false
+  }
+]

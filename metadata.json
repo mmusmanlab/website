@@ -1,0 +1,8 @@
+{
+  "name": "MMUsmanLab",
+  "description": "Portfolio and project notes of Muhammad M. Usman, Full-Stack Software Engineer building web and mobile applications.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

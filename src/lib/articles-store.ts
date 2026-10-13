@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { queryD1 } from "./cloudflare-d1";
 
 export interface ArticleSource {
   title: string;
@@ -448,11 +449,84 @@ async function ensureFileInitialized<T>(filePath: string, defaultData: T): Promi
   }
 }
 
+async function saveArticleToD1(article: Article): Promise<void> {
+  try {
+    await queryD1(
+      `INSERT OR REPLACE INTO articles (
+        id, slug, title, description, published_at, updated_at,
+        category, tags, content, related_projects, sources,
+        status, word_count, difficulty, reading_time, is_automated
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        article.id,
+        article.slug,
+        article.title,
+        article.description,
+        article.publishedAt,
+        article.updatedAt,
+        article.category,
+        JSON.stringify(article.tags || []),
+        JSON.stringify(article.content || []),
+        JSON.stringify(article.relatedProjects || []),
+        JSON.stringify(article.sources || []),
+        article.status,
+        article.wordCount || 600,
+        article.difficulty || "Intermediate",
+        article.readingTime || "5 min read",
+        article.isAutomated ? 1 : 0,
+      ]
+    );
+  } catch (err) {
+    console.warn("[ArticlesStore] Could not write article to D1:", err);
+  }
+}
+
 export async function getAllArticles(): Promise<Article[]> {
+  try {
+    const d1Res = await queryD1("SELECT * FROM articles ORDER BY published_at DESC");
+    if (d1Res.success && d1Res.results && d1Res.results.length > 0) {
+      const d1Articles: Article[] = d1Res.results.map((row: any) => ({
+        id: row.id,
+        slug: row.slug,
+        title: row.title,
+        description: row.description,
+        publishedAt: row.published_at || row.publishedAt,
+        updatedAt: row.updated_at || row.updatedAt,
+        category: row.category,
+        tags: typeof row.tags === "string" ? JSON.parse(row.tags) : row.tags || ["Engineering"],
+        content: typeof row.content === "string" ? JSON.parse(row.content) : row.content || [],
+        relatedProjects: typeof row.related_projects === "string" ? JSON.parse(row.related_projects) : row.relatedProjects || [],
+        sources: typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources || [],
+        status: row.status || "published",
+        wordCount: Number(row.word_count || row.wordCount || 600),
+        difficulty: row.difficulty || "Intermediate",
+        readingTime: row.reading_time || row.readingTime || "5 min read",
+        isAutomated: Boolean(row.is_automated ?? row.isAutomated),
+      }));
+
+      // Merge with initialArticles to ensure preserved slugs are never lost
+      const combined = [...d1Articles];
+      for (const init of initialArticles) {
+        if (!combined.some((a) => a.slug === init.slug)) {
+          combined.push(init);
+          saveArticleToD1(init).catch(() => {});
+        }
+      }
+      memoryArticles = combined;
+      return combined;
+    }
+  } catch (err) {
+    console.warn("[ArticlesStore] D1 read error, falling back:", err);
+  }
+
+  // Auto-seed initial articles to D1 if D1 had 0 rows
+  for (const init of initialArticles) {
+    saveArticleToD1(init).catch(() => {});
+  }
+
   try {
     const fileArticles = await ensureFileInitialized<Article[]>(ARTICLES_FILE_PATH, initialArticles);
     if (Array.isArray(fileArticles) && fileArticles.length > 0) {
-      // Merge with initialArticles to ensure preserved slugs are never lost
       const combined = [...fileArticles];
       for (const init of initialArticles) {
         if (!combined.some((a) => a.slug === init.slug)) {
@@ -504,6 +578,9 @@ export async function saveArticle(newArticle: Article): Promise<void> {
   
   memoryArticles = all;
 
+  // Persist to Cloudflare D1
+  await saveArticleToD1(newArticle);
+
   try {
     await fs.mkdir(path.dirname(ARTICLES_FILE_PATH), { recursive: true });
     await fs.writeFile(ARTICLES_FILE_PATH, JSON.stringify(all, null, 2), "utf-8");
@@ -539,6 +616,15 @@ export async function markTopicUsed(topicId: string): Promise<void> {
 export async function recordArticleRun(run: ArticleRun): Promise<void> {
   memoryRuns.unshift(run);
   try {
+    await queryD1(
+      "INSERT INTO article_runs (id, topic, started_at, model, status, score, summary) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [run.id || `run-${Date.now()}`, run.topic, run.startedAt, run.model, run.status, run.score || 0, run.summary || ""]
+    );
+  } catch (err) {
+    console.warn("[ArticlesStore] Could not record run in D1:", err);
+  }
+
+  try {
     const runs = await ensureFileInitialized<ArticleRun[]>(RUNS_FILE_PATH, memoryRuns);
     runs.unshift(run);
     await fs.writeFile(RUNS_FILE_PATH, JSON.stringify(runs.slice(0, 50), null, 2), "utf-8");
@@ -548,6 +634,12 @@ export async function recordArticleRun(run: ArticleRun): Promise<void> {
 }
 
 export async function deleteArticle(slug: string): Promise<boolean> {
+  try {
+    await queryD1("DELETE FROM articles WHERE slug = ?", [slug]);
+  } catch (err) {
+    console.warn("[ArticlesStore] Could not delete article in D1:", err);
+  }
+
   const all = await getAllArticles();
   const filtered = all.filter((a) => a.slug !== slug);
   if (filtered.length === all.length) {

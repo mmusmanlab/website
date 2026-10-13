@@ -33,7 +33,8 @@ const navItems = [
   { href: "/dashboard/projects", label: "Projects", icon: Layout },
   { href: "/dashboard/messages", label: "Inquiries", icon: Mail },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard/settings", label: "Settings & Cloudflare", icon: Settings },
+  { href: "/dashboard/database", label: "Cloudflare D1 & R2", icon: Database },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

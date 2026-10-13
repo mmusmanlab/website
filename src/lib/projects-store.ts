@@ -1,10 +1,11 @@
 import fs from "fs/promises";
 import path from "path";
 import { Project } from "@/app/lib/data";
+import { cloudflareD1Adapter } from "./storage-adapters";
 
 export type { Project };
 
-const initialProjects: Project[] = [
+export const initialProjects: Project[] = [
   {
     id: "amtech-shop",
     name: "Amtech Shop",
@@ -60,10 +61,36 @@ const initialProjects: Project[] = [
 ];
 
 const PROJECTS_FILE_PATH = path.join(process.cwd(), "src/lib/data/projects.json");
-
 let memoryProjects: Project[] = [...initialProjects];
+let isSeeded = false;
 
-async function ensureProjectsFile(): Promise<Project[]> {
+async function seedInitialProjectsToD1() {
+  if (isSeeded) return;
+  try {
+    for (const proj of initialProjects) {
+      await cloudflareD1Adapter.saveProject(proj);
+    }
+    isSeeded = true;
+  } catch (err) {
+    console.warn("[ProjectsStore] Could not auto-seed to D1:", err);
+  }
+}
+
+export async function getAllProjects(): Promise<Project[]> {
+  try {
+    const d1Projects = await cloudflareD1Adapter.getAllProjects();
+    if (d1Projects && d1Projects.length > 0) {
+      memoryProjects = d1Projects;
+      return d1Projects;
+    }
+  } catch (err) {
+    console.warn("[ProjectsStore] D1 query failed, using fallback:", err);
+  }
+
+  // Seed to D1 if D1 was empty
+  await seedInitialProjectsToD1();
+
+  // File fallback
   try {
     const raw = await fs.readFile(PROJECTS_FILE_PATH, "utf-8");
     const parsed = JSON.parse(raw);
@@ -76,49 +103,63 @@ async function ensureProjectsFile(): Promise<Project[]> {
       await fs.mkdir(path.dirname(PROJECTS_FILE_PATH), { recursive: true });
       await fs.writeFile(PROJECTS_FILE_PATH, JSON.stringify(initialProjects, null, 2), "utf-8");
     } catch {
-      // In-memory fallback
+      // Memory fallback
     }
   }
+
   return memoryProjects;
 }
 
-export async function getAllProjects(): Promise<Project[]> {
-  return await ensureProjectsFile();
-}
-
 export async function getProjectById(id: string): Promise<Project | null> {
+  try {
+    const d1Project = await cloudflareD1Adapter.getProjectById(id);
+    if (d1Project) return d1Project;
+  } catch (err) {
+    console.warn("[ProjectsStore] D1 getProjectById failed:", err);
+  }
+
   const all = await getAllProjects();
   return all.find((p) => p.id === id) ?? null;
 }
 
 export async function saveProject(project: Project): Promise<Project> {
-  const all = await getAllProjects();
-  const index = all.findIndex((p) => p.id === project.id);
-  
   const updatedProject = {
     ...project,
     lastModified: new Date().toISOString().split("T")[0],
   };
 
+  try {
+    await cloudflareD1Adapter.saveProject(updatedProject);
+  } catch (err) {
+    console.warn("[ProjectsStore] Failed saving project to D1:", err);
+  }
+
+  const all = await getAllProjects();
+  const index = all.findIndex((p) => p.id === project.id);
   if (index >= 0) {
     all[index] = updatedProject;
   } else {
     all.push(updatedProject);
   }
-
   memoryProjects = all;
 
   try {
     await fs.mkdir(path.dirname(PROJECTS_FILE_PATH), { recursive: true });
     await fs.writeFile(PROJECTS_FILE_PATH, JSON.stringify(all, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[ProjectsStore] Could not persist to disk, updated in-memory:", err);
+  } catch {
+    // Memory fallback
   }
 
   return updatedProject;
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
+  try {
+    await cloudflareD1Adapter.deleteProject(id);
+  } catch (err) {
+    console.warn("[ProjectsStore] Failed deleting project from D1:", err);
+  }
+
   const all = await getAllProjects();
   const filtered = all.filter((p) => p.id !== id);
   if (filtered.length === all.length) {
@@ -128,8 +169,8 @@ export async function deleteProject(id: string): Promise<boolean> {
   memoryProjects = filtered;
   try {
     await fs.writeFile(PROJECTS_FILE_PATH, JSON.stringify(filtered, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[ProjectsStore] Could not persist delete to disk:", err);
+  } catch {
+    // Memory fallback
   }
   return true;
 }

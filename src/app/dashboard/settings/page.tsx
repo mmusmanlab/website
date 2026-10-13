@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Settings,
   Database,
@@ -14,6 +15,7 @@ import {
   Copy,
   Check,
   RefreshCw,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -113,9 +115,16 @@ CREATE TABLE IF NOT EXISTS contact_inquiries (
 
       {/* Cloudflare D1 & R2 Readiness */}
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Database size={22} className="text-primary" />
-          <h2 className="font-headline text-2xl font-bold">Cloudflare D1 &amp; R2 Architecture</h2>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Database size={22} className="text-primary" />
+            <h2 className="font-headline text-2xl font-bold">Cloudflare D1 &amp; R2 Architecture</h2>
+          </div>
+          <Link href="/dashboard/database">
+            <Button size="sm" className="rounded-xl font-bold bg-primary text-primary-foreground">
+              Open D1 Console &amp; Tables <ArrowRight size={14} className="ml-1.5" />
+            </Button>
+          </Link>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           The application data adapters and database interfaces have been decoupled into <code>src/lib/storage-adapters.ts</code>, ready for zero-latency SQL queries on Cloudflare D1 and object uploads on Cloudflare R2.

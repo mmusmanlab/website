@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mmusmanlab",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mmusmanlab-db",
+      "database_id": "mmusmanlab-db"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2_ASSETS",
+      "bucket_name": "mmusmanlab-assets"
+    }
+  ]
+}

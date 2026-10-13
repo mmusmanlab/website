@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { isDashboardAuthorized } from "@/lib/dashboard-auth";
+import { isDashboardAuthorized, validateSameOrigin } from "@/lib/dashboard-auth";
 
 export const dynamic = "force-dynamic";
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
-// Ensure upload directory exists
 async function ensureUploadDir() {
   try {
     await fs.mkdir(UPLOAD_DIR, { recursive: true });
@@ -18,13 +17,17 @@ async function ensureUploadDir() {
 
 /**
  * GET /api/upload
- * List all locally uploaded images in /public/uploads
+ * List all uploaded images (Protected: authenticated dashboard users only)
  */
 export async function GET(request: NextRequest) {
+  if (!isDashboardAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized access to media uploads." }, { status: 401 });
+  }
+
   try {
     await ensureUploadDir();
     const files = await fs.readdir(UPLOAD_DIR);
-    
+
     const fileStats = await Promise.all(
       files
         .filter((file) => !file.startsWith(".") && /\.(png|jpe?g|webp|gif|svg)$/i.test(file))
@@ -51,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      storageDriver: "local",
+      storageDriver: process.env.IMAGE_STORAGE_DRIVER || "local",
       r2Status: "future_pending_billing",
       count: validFiles.length,
       files: validFiles,
@@ -66,9 +69,17 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/upload
- * Handles local file upload into /public/uploads
+ * Handles image upload into /public/uploads (Protected: authenticated dashboard users only)
  */
 export async function POST(request: NextRequest) {
+  if (!isDashboardAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized access to image upload." }, { status: 401 });
+  }
+
+  if (!validateSameOrigin(request)) {
+    return NextResponse.json({ error: "Invalid request origin (CSRF protection)." }, { status: 403 });
+  }
+
   try {
     await ensureUploadDir();
 
@@ -83,7 +94,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "No file provided in form data" }, { status: 400 });
       }
 
-      // Validate mime type
       const mime = file.type || "application/octet-stream";
       const isImage = mime.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name);
       if (!isImage) {
@@ -119,18 +129,22 @@ export async function POST(request: NextRequest) {
     // 2. Base64 JSON upload fallback
     if (contentType.includes("application/json")) {
       const body = await request.json();
-      const { filename: rawName, base64, mimeType = "image/png" } = body;
+      const { data, filename: originalFilename, mimeType } = body;
 
-      if (!base64) {
-        return NextResponse.json({ error: "Missing base64 image data" }, { status: 400 });
+      if (!data || typeof data !== "string") {
+        return NextResponse.json({ error: "Invalid base64 image data." }, { status: 400 });
       }
 
-      const cleanBase64 = base64.replace(/^data:image\/\w+;base64,/, "");
-      const buffer = Buffer.from(cleanBase64, "base64");
+      const base64Data = data.includes(",") ? data.split(",")[1] : data;
+      const buffer = Buffer.from(base64Data, "base64");
 
-      const ext = mimeType.split("/")[1] || "png";
-      const sanitizedName = (rawName || `image.${ext}`).replace(/[^a-zA-Z0-9.-]/g, "_").toLowerCase();
-      const filename = `${Date.now()}-${sanitizedName}`;
+      if (buffer.length > 10 * 1024 * 1024) {
+        return NextResponse.json({ error: "Image exceeds 10MB limit." }, { status: 400 });
+      }
+
+      const ext = mimeType ? mimeType.split("/")[1] || "png" : "png";
+      const safeName = (originalFilename || `image.${ext}`).replace(/[^a-zA-Z0-9.-]/g, "_");
+      const filename = `${Date.now()}-${safeName}`;
       const filePath = path.join(UPLOAD_DIR, filename);
 
       await fs.writeFile(filePath, buffer);
@@ -141,13 +155,13 @@ export async function POST(request: NextRequest) {
         url,
         filename,
         size: buffer.length,
-        mimeType,
+        mimeType: mimeType || "image/png",
         storageDriver: "local",
-        message: "Image successfully uploaded to local storage (/public/uploads).",
+        message: "Image uploaded via base64.",
       });
     }
 
-    return NextResponse.json({ error: "Unsupported Content-Type. Use multipart/form-data or application/json" }, { status: 400 });
+    return NextResponse.json({ error: "Unsupported Content-Type. Use multipart/form-data or application/json." }, { status: 400 });
   } catch (err: any) {
     console.error("[Upload API Error]", err);
     return NextResponse.json(
@@ -162,7 +176,11 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   if (!isDashboardAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized access to delete file." }, { status: 401 });
+  }
+
+  if (!validateSameOrigin(request)) {
+    return NextResponse.json({ error: "Invalid request origin (CSRF protection)." }, { status: 403 });
   }
 
   try {
@@ -173,7 +191,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Filename is required" }, { status: 400 });
     }
 
-    // Security check to avoid path traversal
+    // Security check to prevent path traversal
     const safeName = path.basename(filename);
     const filePath = path.join(UPLOAD_DIR, safeName);
 

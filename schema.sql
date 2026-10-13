@@ -1,5 +1,6 @@
 -- Cloudflare D1 Migration Schema for mmusmanlab-db
 -- Database: mmusmanlab-db
+-- Repeatable and safe schema definition
 
 CREATE TABLE IF NOT EXISTS articles (
   id TEXT PRIMARY KEY,
@@ -13,10 +14,10 @@ CREATE TABLE IF NOT EXISTS articles (
   content TEXT NOT NULL, -- JSON array of section objects
   related_projects TEXT NOT NULL, -- JSON array of project IDs
   sources TEXT, -- JSON array of source objects
-  status TEXT NOT NULL DEFAULT 'published',
+  status TEXT NOT NULL DEFAULT 'draft',
   word_count INTEGER DEFAULT 0,
   difficulty TEXT DEFAULT 'Intermediate',
-  reading_time TEXT DEFAULT '5 min read',
+  readingTime TEXT DEFAULT '5 min read',
   is_automated INTEGER DEFAULT 0
 );
 
@@ -49,12 +50,10 @@ CREATE TABLE IF NOT EXISTS contact_inquiries (
 CREATE TABLE IF NOT EXISTS article_topics (
   id TEXT PRIMARY KEY,
   topic TEXT NOT NULL,
-  tech_stack TEXT NOT NULL,
-  why_it_matters TEXT,
-  target_audience TEXT,
-  pain_point TEXT,
+  category TEXT NOT NULL,
+  priority INTEGER DEFAULT 8,
   used INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL
+  used_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS article_runs (
@@ -63,8 +62,17 @@ CREATE TABLE IF NOT EXISTS article_runs (
   started_at TEXT NOT NULL,
   model TEXT NOT NULL,
   status TEXT NOT NULL,
-  score INTEGER,
+  score INTEGER DEFAULT 0,
   summary TEXT
+);
+
+CREATE TABLE IF NOT EXISTS approval_audit_logs (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL,
+  action TEXT NOT NULL,
+  performed_at TEXT NOT NULL,
+  performed_by TEXT NOT NULL,
+  notes TEXT
 );
 
 -- Indexes for optimal querying on edge
@@ -73,3 +81,6 @@ CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
 CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_category ON projects(category);
 CREATE INDEX IF NOT EXISTS idx_contact_created ON contact_inquiries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_topics_used ON article_topics(used, priority DESC);
+CREATE INDEX IF NOT EXISTS idx_runs_started ON article_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_slug ON approval_audit_logs(slug);

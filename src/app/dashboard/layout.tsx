@@ -179,10 +179,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Button>
       </header>
 
+      {/* Mobile Backdrop Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar Navigation */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-card/95 md:bg-card border-r border-border/70 flex flex-col transition-transform duration-300 md:static md:translate-x-0 ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-1/0 md:translate-x-0"
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border/70 flex flex-col transition-transform duration-300 md:static md:translate-x-0 shadow-2xl md:shadow-none ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
         {/* Brand */}
@@ -283,7 +292,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Route Page Container */}
-        <div className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl w-full mx-auto">
+        <div className="flex-1 p-3.5 sm:p-6 md:p-8 lg:p-10 max-w-7xl w-full mx-auto min-w-0">
           {children}
         </div>
       </main>

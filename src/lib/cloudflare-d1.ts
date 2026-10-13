@@ -1,11 +1,11 @@
 /**
  * Cloudflare D1 Database Client and Driver
- * Configured for mmusmanlab-db
+ * Primary Production Store for MMUsmanLab
  * 
  * Supports:
  * 1. Cloudflare Native D1 Binding (when deployed on Cloudflare Workers / Pages via env.DB)
- * 2. Cloudflare D1 HTTP REST API (when CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID & CLOUDFLARE_D1_DATABASE_ID are set)
- * 3. Local High-Performance Emulated D1 Engine (zero crash fallback for local testing & development)
+ * 2. Cloudflare D1 HTTP REST API (for Next.js on Vercel / serverless runtime via CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID & CLOUDFLARE_D1_DATABASE_ID)
+ * 3. Local Development Mode (isolated to local dev environments when credentials are pending)
  */
 
 import fs from "fs/promises";
@@ -28,71 +28,92 @@ export interface D1QueryResult<T = any> {
 export interface D1Status {
   databaseName: string;
   databaseId: string;
-  mode: "native" | "remote_api" | "local_emulated";
+  mode: "native" | "remote_api" | "local_dev" | "unconfigured";
   hasApiCredentials: boolean;
   connected: boolean;
   message: string;
   latencyMs?: number;
+  details?: Record<string, any>;
 }
 
 const DATABASE_NAME = process.env.CLOUDFLARE_D1_DATABASE_NAME || "mmusmanlab-db";
-const EMULATOR_PATH = path.join(process.cwd(), "src/lib/data/d1-store.json");
+const LOCAL_STORE_PATH = path.join(process.cwd(), "src/lib/data/d1-store.json");
 
-// Local emulated tables in memory and on disk
-interface EmulatedDb {
+interface LocalStore {
   articles: Record<string, any>;
   projects: Record<string, any>;
   contact_inquiries: Record<string, any>;
   article_topics: Record<string, any>;
   article_runs: Record<string, any>;
+  approval_audit_logs: Record<string, any>;
 }
 
-let emulatedDb: EmulatedDb | null = null;
+let localStore: LocalStore | null = null;
 
-async function getEmulatedDb(): Promise<EmulatedDb> {
-  if (emulatedDb) return emulatedDb;
-
+async function getLocalStore(): Promise<LocalStore> {
+  if (localStore) return localStore;
   try {
-    const raw = await fs.readFile(EMULATOR_PATH, "utf-8");
-    emulatedDb = JSON.parse(raw);
-    return emulatedDb!;
+    const raw = await fs.readFile(LOCAL_STORE_PATH, "utf-8");
+    localStore = JSON.parse(raw);
+    if (!localStore!.approval_audit_logs) {
+      localStore!.approval_audit_logs = {};
+    }
+    return localStore!;
   } catch {
-    emulatedDb = {
+    localStore = {
       articles: {},
       projects: {},
       contact_inquiries: {},
       article_topics: {},
       article_runs: {},
+      approval_audit_logs: {},
     };
     try {
-      await fs.mkdir(path.dirname(EMULATOR_PATH), { recursive: true });
-      await fs.writeFile(EMULATOR_PATH, JSON.stringify(emulatedDb, null, 2), "utf-8");
+      await fs.mkdir(path.dirname(LOCAL_STORE_PATH), { recursive: true });
+      await fs.writeFile(LOCAL_STORE_PATH, JSON.stringify(localStore, null, 2), "utf-8");
     } catch {
-      // Memory fallback
+      // Memory fallback for read-only filesystem
     }
-    return emulatedDb!;
+    return localStore!;
   }
 }
 
-async function persistEmulatedDb(): Promise<void> {
-  if (!emulatedDb) return;
+async function persistLocalStore(): Promise<void> {
+  if (!localStore) return;
   try {
-    await fs.mkdir(path.dirname(EMULATOR_PATH), { recursive: true });
-    await fs.writeFile(EMULATOR_PATH, JSON.stringify(emulatedDb, null, 2), "utf-8");
+    await fs.mkdir(path.dirname(LOCAL_STORE_PATH), { recursive: true });
+    await fs.writeFile(LOCAL_STORE_PATH, JSON.stringify(localStore, null, 2), "utf-8");
   } catch (err) {
-    console.warn("[CloudflareD1] Error persisting emulated DB:", err);
+    console.warn("[CloudflareD1 Local] Notice persisting store:", err);
   }
+}
+
+/**
+ * Get Cloudflare credentials, strictly ensuring database ID is present
+ */
+function getCloudflareCredentials(): {
+  accountId: string | null;
+  databaseId: string | null;
+  apiToken: string | null;
+  isConfigured: boolean;
+} {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim() || null;
+  const databaseId = process.env.CLOUDFLARE_D1_DATABASE_ID?.trim() || null;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || null;
+
+  // Database ID must be a UUID or identifier, never default to database name string
+  const isConfigured = Boolean(accountId && databaseId && apiToken);
+  return { accountId, databaseId, apiToken, isConfigured };
 }
 
 /**
  * Execute a query against Cloudflare D1
  */
 export async function queryD1<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const databaseId = process.env.CLOUDFLARE_D1_DATABASE_ID || DATABASE_NAME;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const { accountId, databaseId, apiToken, isConfigured } = getCloudflareCredentials();
+  const isProduction = process.env.NODE_ENV === "production";
 
-  // 1. Check for native Cloudflare runtime binding (env.DB)
+  // 1. Cloudflare Native Binding (when available in Cloudflare Workers / Pages)
   const globalAny = globalThis as any;
   if (globalAny.DB && typeof globalAny.DB.prepare === "function") {
     try {
@@ -107,7 +128,7 @@ export async function queryD1<T = any>(sql: string, params: any[] = []): Promise
         meta: res.meta,
       };
     } catch (err: any) {
-      console.error("[CloudflareD1 Native] Query failed:", err);
+      console.error("[CloudflareD1 Native] Query execution failed:", err);
       return {
         results: [],
         success: false,
@@ -116,8 +137,8 @@ export async function queryD1<T = any>(sql: string, params: any[] = []): Promise
     }
   }
 
-  // 2. Check for Cloudflare D1 HTTP REST API credentials
-  if (accountId && apiToken && databaseId) {
+  // 2. Cloudflare D1 HTTP REST API (Standard for Next.js on Vercel)
+  if (isConfigured) {
     const start = Date.now();
     try {
       const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
@@ -138,9 +159,20 @@ export async function queryD1<T = any>(sql: string, params: any[] = []): Promise
 
       if (!response.ok || !data.success) {
         const errorMsg = data.errors?.[0]?.message || `HTTP ${response.status}: ${response.statusText}`;
-        console.warn(`[CloudflareD1 REST API] ${errorMsg}`);
-        // Fall back to emulated database if API call errors so site stays responsive
-        return await executeOnEmulatedDb<T>(sql, params);
+        console.error(`[CloudflareD1 REST API Error] ${errorMsg}`);
+
+        // In production, NEVER silently pretend persistence succeeded
+        if (isProduction) {
+          return {
+            results: [],
+            success: false,
+            error: `Cloudflare D1 Query Failed: ${errorMsg}`,
+          };
+        }
+
+        // In development only, fall back with warning
+        console.warn("[CloudflareD1] Dev fallback to local store due to REST API error.");
+        return await executeOnLocalStore<T>(sql, params);
       }
 
       const queryResult = data.result?.[0] || {};
@@ -153,39 +185,57 @@ export async function queryD1<T = any>(sql: string, params: any[] = []): Promise
         },
       };
     } catch (err: any) {
-      console.warn("[CloudflareD1 REST API] Network error, falling back to local emulated engine:", err.message);
-      return await executeOnEmulatedDb<T>(sql, params);
+      console.error("[CloudflareD1 REST API Network Error]:", err.message);
+      if (isProduction) {
+        return {
+          results: [],
+          success: false,
+          error: `Network error connecting to Cloudflare D1: ${err.message}`,
+        };
+      }
+      return await executeOnLocalStore<T>(sql, params);
     }
   }
 
-  // 3. Fallback to Local Emulated D1 Engine
-  return await executeOnEmulatedDb<T>(sql, params);
+  // 3. Fallback Handling
+  if (isProduction) {
+    // In production on Vercel, inform that Cloudflare D1 environment variables are missing
+    return {
+      results: [],
+      success: false,
+      error: "Cloudflare D1 credentials missing in production. Configure CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_API_TOKEN.",
+    };
+  }
+
+  // In local development, use local dev store
+  return await executeOnLocalStore<T>(sql, params);
 }
 
 /**
- * Lightweight SQL-subset interpreter for emulated D1 engine
+ * Execute SQL on local development store (used in local development only)
  */
-async function executeOnEmulatedDb<T>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-  const db = await getEmulatedDb();
+async function executeOnLocalStore<T>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
+  const store = await getLocalStore();
   const trimmed = sql.trim();
   const upper = trimmed.toUpperCase();
 
-  // Handle CREATE TABLE / INDEX
+  // DDL Statements
   if (upper.startsWith("CREATE TABLE") || upper.startsWith("CREATE INDEX")) {
     return { results: [], success: true, meta: { changed_db: true } };
   }
 
   // Determine target table
-  let tableKey: keyof EmulatedDb = "articles";
+  let tableKey: keyof LocalStore = "articles";
   if (upper.includes("ARTICLES")) tableKey = "articles";
   else if (upper.includes("PROJECTS")) tableKey = "projects";
   else if (upper.includes("CONTACT_INQUIRIES")) tableKey = "contact_inquiries";
   else if (upper.includes("ARTICLE_TOPICS")) tableKey = "article_topics";
   else if (upper.includes("ARTICLE_RUNS")) tableKey = "article_runs";
+  else if (upper.includes("APPROVAL_AUDIT_LOGS")) tableKey = "approval_audit_logs";
 
-  // Handle SELECT COUNT(*)
+  // SELECT COUNT(*)
   if (upper.startsWith("SELECT COUNT(*)")) {
-    const count = Object.keys(db[tableKey]).length;
+    const count = Object.keys(store[tableKey]).length;
     return {
       results: [{ count }] as unknown as T[],
       success: true,
@@ -193,11 +243,10 @@ async function executeOnEmulatedDb<T>(sql: string, params: any[] = []): Promise<
     };
   }
 
-  // Handle SELECT
+  // SELECT statements
   if (upper.startsWith("SELECT")) {
-    let rows = Object.values(db[tableKey]);
+    let rows = Object.values(store[tableKey]);
 
-    // Handle WHERE id = ? or slug = ?
     if (upper.includes("WHERE")) {
       if (upper.includes("SLUG = ?") && params[0] !== undefined) {
         rows = rows.filter((r: any) => r.slug === params[0]);
@@ -210,8 +259,11 @@ async function executeOnEmulatedDb<T>(sql: string, params: any[] = []): Promise<
       }
     }
 
-    // Handle ORDER BY
-    if (upper.includes("ORDER BY PUBLISHED_AT DESC") || upper.includes("ORDER BY CREATED_AT DESC") || upper.includes("ORDER BY STARTED_AT DESC")) {
+    if (
+      upper.includes("ORDER BY PUBLISHED_AT DESC") ||
+      upper.includes("ORDER BY CREATED_AT DESC") ||
+      upper.includes("ORDER BY STARTED_AT DESC")
+    ) {
       rows.sort((a: any, b: any) => {
         const dateA = a.published_at || a.created_at || a.started_at || "";
         const dateB = b.published_at || b.created_at || b.started_at || "";
@@ -219,134 +271,136 @@ async function executeOnEmulatedDb<T>(sql: string, params: any[] = []): Promise<
       });
     }
 
-    // Handle LIMIT
-    if (upper.includes("LIMIT") && typeof params[params.length - 1] === "number") {
-      const limit = params[params.length - 1];
-      rows = rows.slice(0, limit);
-    }
-
-    return {
-      results: rows as T[],
-      success: true,
-      meta: { rows_read: rows.length },
-    };
+    return { results: rows as unknown as T[], success: true };
   }
 
-  // Handle INSERT OR REPLACE / INSERT
+  // INSERT OR REPLACE / INSERT
   if (upper.startsWith("INSERT")) {
+    const id = params[0] || `item-${Date.now()}`;
+    const rowObj: Record<string, any> = { id };
+
     if (tableKey === "articles") {
-      const [id, slug, title, description, published_at, updated_at, category, tags, content, related_projects, sources, status, word_count, difficulty, reading_time, is_automated] = params;
-      const record = {
-        id,
-        slug,
-        title,
-        description,
-        published_at,
-        updated_at,
-        category,
-        tags,
-        content,
-        related_projects,
-        sources,
-        status: status || "published",
-        word_count: word_count || 0,
-        difficulty: difficulty || "Intermediate",
-        reading_time: reading_time || "5 min read",
-        is_automated: is_automated ? 1 : 0,
-      };
-      db.articles[slug || id] = record;
-      await persistEmulatedDb();
-      return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
+      rowObj.slug = params[1];
+      rowObj.title = params[2];
+      rowObj.description = params[3];
+      rowObj.published_at = params[4];
+      rowObj.updated_at = params[5];
+      rowObj.category = params[6];
+      rowObj.tags = params[7];
+      rowObj.content = params[8];
+      rowObj.related_projects = params[9];
+      rowObj.sources = params[10];
+      rowObj.status = params[11];
+      rowObj.word_count = params[12];
+      rowObj.difficulty = params[13];
+      rowObj.reading_time = params[14];
+      rowObj.is_automated = params[15];
+    } else if (tableKey === "projects") {
+      rowObj.name = params[1];
+      rowObj.short_description = params[2];
+      rowObj.full_description = params[3];
+      rowObj.overview = params[4];
+      rowObj.features = params[5];
+      rowObj.image = params[6];
+      rowObj.image_alt = params[7];
+      rowObj.technologies = params[8];
+      rowObj.category = params[9];
+      rowObj.demo_url = params[10];
+      rowObj.repo_url = params[11];
+      rowObj.last_modified = params[12];
+    } else if (tableKey === "contact_inquiries") {
+      rowObj.name = params[1];
+      rowObj.email = params[2];
+      rowObj.message = params[3];
+      rowObj.project_type = params[4];
+      rowObj.company = params[5];
+      rowObj.created_at = params[6];
+    } else if (tableKey === "article_topics") {
+      rowObj.topic = params[1];
+      rowObj.category = params[2];
+      rowObj.priority = params[3];
+      rowObj.used = params[4];
+      rowObj.used_at = params[5];
+    } else if (tableKey === "article_runs") {
+      rowObj.topic = params[1];
+      rowObj.started_at = params[2];
+      rowObj.model = params[3];
+      rowObj.status = params[4];
+      rowObj.score = params[5];
+      rowObj.summary = params[6];
+    } else if (tableKey === "approval_audit_logs") {
+      rowObj.slug = params[1];
+      rowObj.action = params[2];
+      rowObj.performed_at = params[3];
+      rowObj.performed_by = params[4];
+      rowObj.notes = params[5];
     }
 
-    if (tableKey === "projects") {
-      const [id, name, short_description, full_description, overview, features, image, image_alt, technologies, category, last_modified, demo_url, repo_url] = params;
-      const record = {
-        id,
-        name,
-        short_description,
-        full_description,
-        overview,
-        features,
-        image,
-        image_alt,
-        technologies,
-        category,
-        last_modified,
-        demo_url,
-        repo_url,
-      };
-      db.projects[id] = record;
-      await persistEmulatedDb();
-      return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
-    }
-
-    if (tableKey === "contact_inquiries") {
-      const [id, name, email, message, project_type, company, created_at] = params;
-      const record = { id, name, email, message, project_type, company, created_at };
-      db.contact_inquiries[id] = record;
-      await persistEmulatedDb();
-      return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
-    }
-
-    if (tableKey === "article_runs") {
-      const [id, topic, started_at, model, status, score, summary] = params;
-      const record = { id, topic, started_at, model, status, score, summary };
-      db.article_runs[id] = record;
-      await persistEmulatedDb();
-      return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
-    }
-
-    if (tableKey === "article_topics") {
-      const [id, topic, tech_stack, why_it_matters, target_audience, pain_point, used, created_at] = params;
-      const record = { id, topic, tech_stack, why_it_matters, target_audience, pain_point, used, created_at };
-      db.article_topics[id] = record;
-      await persistEmulatedDb();
-      return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
-    }
+    store[tableKey][String(id)] = rowObj;
+    await persistLocalStore();
+    return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
   }
 
-  // Handle DELETE
-  if (upper.startsWith("DELETE")) {
-    if (params[0] !== undefined) {
-      const key = params[0];
-      if (db[tableKey][key]) {
-        delete db[tableKey][key];
-        await persistEmulatedDb();
-        return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
+  // UPDATE
+  if (upper.startsWith("UPDATE")) {
+    if (tableKey === "articles" && upper.includes("STATUS = 'PUBLISHED'")) {
+      const slug = params[1] || params[0];
+      const match = Object.values(store.articles).find((a: any) => a.slug === slug);
+      if (match) {
+        match.status = "published";
+        match.updated_at = new Date().toISOString().split("T")[0];
+        await persistLocalStore();
       }
     }
+    return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
+  }
+
+  // DELETE
+  if (upper.startsWith("DELETE")) {
+    if (upper.includes("WHERE SLUG = ?") && params[0] !== undefined) {
+      const slug = params[0];
+      for (const [key, val] of Object.entries(store[tableKey])) {
+        if ((val as any).slug === slug) {
+          delete store[tableKey][key];
+        }
+      }
+      await persistLocalStore();
+    } else if (upper.includes("WHERE ID = ?") && params[0] !== undefined) {
+      delete store[tableKey][params[0]];
+      await persistLocalStore();
+    }
+    return { results: [], success: true, meta: { changed_db: true, changes: 1 } };
   }
 
   return { results: [], success: true };
 }
 
 /**
- * Get comprehensive D1 status for dashboard
+ * Get comprehensive D1 connection status for dashboard
+ * Reports honest status without masquerading local emulation as connected live D1.
  */
 export async function getD1Status(): Promise<D1Status> {
   const globalAny = globalThis as any;
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const databaseId = process.env.CLOUDFLARE_D1_DATABASE_ID || DATABASE_NAME;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const { accountId, databaseId, apiToken, isConfigured } = getCloudflareCredentials();
 
+  // 1. Native Binding Check
   if (globalAny.DB) {
     try {
       const start = Date.now();
       const res = await globalAny.DB.prepare("SELECT 1 as ping").all();
       return {
         databaseName: DATABASE_NAME,
-        databaseId: databaseId,
+        databaseId: databaseId || "binding:env.DB",
         mode: "native",
         hasApiCredentials: true,
-        connected: res.success,
-        message: `Connected via Cloudflare Native D1 Binding (DB: ${DATABASE_NAME})`,
+        connected: Boolean(res?.success ?? true),
+        message: `Connected via Cloudflare Native D1 Binding (${DATABASE_NAME})`,
         latencyMs: Date.now() - start,
       };
     } catch (err: any) {
       return {
         databaseName: DATABASE_NAME,
-        databaseId: databaseId,
+        databaseId: databaseId || "binding:env.DB",
         mode: "native",
         hasApiCredentials: true,
         connected: false,
@@ -355,7 +409,8 @@ export async function getD1Status(): Promise<D1Status> {
     }
   }
 
-  if (accountId && apiToken) {
+  // 2. Cloudflare REST API Check
+  if (isConfigured) {
     try {
       const start = Date.now();
       const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
@@ -373,49 +428,64 @@ export async function getD1Status(): Promise<D1Status> {
       if (res.ok && data.success) {
         return {
           databaseName: DATABASE_NAME,
-          databaseId: databaseId,
+          databaseId: databaseId!,
           mode: "remote_api",
           hasApiCredentials: true,
           connected: true,
-          message: `Connected to Cloudflare D1 (${DATABASE_NAME}) via Cloudflare REST API`,
+          message: `Connected live to Cloudflare D1 (${DATABASE_NAME}) via Cloudflare REST API`,
           latencyMs: latency,
         };
       } else {
+        const errorMsg = data.errors?.[0]?.message || `HTTP ${res.status}: ${res.statusText}`;
         return {
           databaseName: DATABASE_NAME,
-          databaseId: databaseId,
+          databaseId: databaseId!,
           mode: "remote_api",
           hasApiCredentials: true,
           connected: false,
-          message: data.errors?.[0]?.message || `Cloudflare API returned HTTP ${res.status}`,
+          message: `Cloudflare D1 Connection Error: ${errorMsg}`,
         };
       }
     } catch (err: any) {
       return {
         databaseName: DATABASE_NAME,
-        databaseId: databaseId,
+        databaseId: databaseId!,
         mode: "remote_api",
         hasApiCredentials: true,
         connected: false,
-        message: `Network failure connecting to Cloudflare D1: ${err.message}`,
+        message: `Network error connecting to Cloudflare D1: ${err.message}`,
       };
     }
   }
 
+  // 3. Unconfigured / Local Dev Status
+  const isProduction = process.env.NODE_ENV === "production";
+  if (isProduction) {
+    return {
+      databaseName: DATABASE_NAME,
+      databaseId: databaseId || "Not set",
+      mode: "unconfigured",
+      hasApiCredentials: false,
+      connected: false,
+      message: "Cloudflare D1 is not configured in production. Please set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_API_TOKEN in Vercel.",
+    };
+  }
+
   return {
     databaseName: DATABASE_NAME,
-    databaseId: databaseId,
-    mode: "local_emulated",
+    databaseId: databaseId || "local-dev",
+    mode: "local_dev",
     hasApiCredentials: false,
-    connected: true,
-    message: `Ready for mmusmanlab-db. Emulated local SQLite engine active. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in .env to connect live.`,
+    connected: false, // Honesty: Not connected to live Cloudflare D1
+    message: "Local Development Mode: Using local SQLite dev store. Add CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_D1_DATABASE_ID, and CLOUDFLARE_API_TOKEN in .env to connect live.",
   };
 }
 
 /**
- * Run schema migrations on Cloudflare D1
+ * Repeatable, safe schema migrations for Cloudflare D1
+ * Never runs destructive resets.
  */
-export async function runD1Migration(): Promise<{ success: boolean; message: string }> {
+export async function runD1Migration(): Promise<{ success: boolean; message: string; appliedStatements: number }> {
   const ddlStatements = [
     `CREATE TABLE IF NOT EXISTS articles (
       id TEXT PRIMARY KEY,
@@ -428,28 +498,34 @@ export async function runD1Migration(): Promise<{ success: boolean; message: str
       tags TEXT NOT NULL,
       content TEXT NOT NULL,
       related_projects TEXT NOT NULL,
-      sources TEXT,
-      status TEXT NOT NULL DEFAULT 'published',
-      word_count INTEGER DEFAULT 0,
+      sources TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
+      word_count INTEGER DEFAULT 600,
       difficulty TEXT DEFAULT 'Intermediate',
       reading_time TEXT DEFAULT '5 min read',
       is_automated INTEGER DEFAULT 0
-    );`,
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug)`,
+    `CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status)`,
+    `CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at DESC)`,
+
     `CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       short_description TEXT NOT NULL,
       full_description TEXT NOT NULL,
       overview TEXT,
-      features TEXT,
+      features TEXT NOT NULL,
       image TEXT NOT NULL,
       image_alt TEXT,
       technologies TEXT NOT NULL,
       category TEXT NOT NULL,
-      last_modified TEXT,
       demo_url TEXT,
-      repo_url TEXT
-    );`,
+      repo_url TEXT,
+      last_modified TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_projects_category ON projects(category)`,
+
     `CREATE TABLE IF NOT EXISTS contact_inquiries (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -458,34 +534,57 @@ export async function runD1Migration(): Promise<{ success: boolean; message: str
       project_type TEXT,
       company TEXT,
       created_at TEXT NOT NULL
-    );`,
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_inquiries_created ON contact_inquiries(created_at DESC)`,
+
     `CREATE TABLE IF NOT EXISTS article_topics (
       id TEXT PRIMARY KEY,
       topic TEXT NOT NULL,
-      tech_stack TEXT NOT NULL,
-      why_it_matters TEXT,
-      target_audience TEXT,
-      pain_point TEXT,
+      category TEXT NOT NULL,
+      priority INTEGER DEFAULT 8,
       used INTEGER DEFAULT 0,
-      created_at TEXT NOT NULL
-    );`,
+      used_at TEXT
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_topics_used ON article_topics(used, priority DESC)`,
+
     `CREATE TABLE IF NOT EXISTS article_runs (
       id TEXT PRIMARY KEY,
       topic TEXT NOT NULL,
       started_at TEXT NOT NULL,
       model TEXT NOT NULL,
       status TEXT NOT NULL,
-      score INTEGER,
+      score INTEGER DEFAULT 0,
       summary TEXT
-    );`,
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_runs_started ON article_runs(started_at DESC)`,
+
+    `CREATE TABLE IF NOT EXISTS approval_audit_logs (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL,
+      action TEXT NOT NULL,
+      performed_at TEXT NOT NULL,
+      performed_by TEXT NOT NULL,
+      notes TEXT
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_audit_slug ON approval_audit_logs(slug)`,
   ];
 
-  for (const statement of ddlStatements) {
-    const res = await queryD1(statement);
-    if (!res.success && res.error) {
-      return { success: false, message: `Migration error: ${res.error}` };
+  let applied = 0;
+  for (const ddl of ddlStatements) {
+    const res = await queryD1(ddl);
+    if (!res.success) {
+      return {
+        success: false,
+        message: `Migration failed at statement: ${ddl.slice(0, 40)}... Error: ${res.error}`,
+        appliedStatements: applied,
+      };
     }
+    applied++;
   }
 
-  return { success: true, message: `Successfully executed D1 migration schema on ${DATABASE_NAME}!` };
+  return {
+    success: true,
+    message: `All ${applied} safe migration statements executed successfully on Cloudflare D1.`,
+    appliedStatements: applied,
+  };
 }

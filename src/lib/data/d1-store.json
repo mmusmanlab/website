@@ -1,0 +1,156 @@
+{
+  "articles": {
+    "react-native-ecommerce-expo-firebase": {
+      "id": "art-1",
+      "slug": "react-native-ecommerce-expo-firebase",
+      "title": "How I Built a React Native E-commerce App with Expo and Firebase",
+      "description": "A case study of Amtech Shop, a cross-platform retail app described with shopping, product updates, payment integration and inventory administration.",
+      "published_at": "2026-09-30",
+      "updated_at": "2026-09-30",
+      "category": "Mobile Development",
+      "tags": "[\"React Native\",\"Expo\",\"Firebase\",\"TypeScript\",\"E-commerce\"]",
+      "content": "[{\"heading\":\"Project overview\",\"paragraphs\":[\"Amtech Shop is described as an Android and iOS e-commerce application for retail businesses. The project record identifies React Native and Expo for the app and lists Firebase and TypeScript in its stack.\",\"The available project information describes the product scope, but does not document implementation details such as Firebase services, payment provider, data model or deployment process. This case study stays with the documented scope rather than filling those gaps with assumptions.\"]},{\"heading\":\"Documented functionality\",\"paragraphs\":[\"The project description names these areas of functionality:\"],\"bullets\":[\"A shopping experience\",\"Real-time product updates\",\"Payment integration\",\"An inventory administration dashboard\"]},{\"heading\":\"Technology choices\",\"paragraphs\":[\"React Native and Expo are the named mobile technologies, with Firebase and TypeScript also listed for the project. The project record does not specify how responsibilities were divided among those technologies, so no further architecture claims are made here.\"]},{\"heading\":\"Engineering takeaways for mobile commerce\",\"paragraphs\":[\"Developing a mobile retail workflow requires strong state separation between browsing, shopping cart mutation, and checkout confirmation. Keeping components modular allows independent iteration on the catalog layout without destabilizing payment and auth flows.\"]}]",
+      "related_projects": "[\"amtech-shop\"]",
+      "sources": "[{\"title\":\"React Native Documentation\",\"url\":\"https://reactnative.dev/docs/getting-started\"},{\"title\":\"Expo Documentation\",\"url\":\"https://docs.expo.dev/\"}]",
+      "status": "published",
+      "word_count": 520,
+      "difficulty": "Intermediate",
+      "reading_time": "4 min read",
+      "is_automated": 0
+    },
+    "household-budget-tracker-react-native-expo": {
+      "id": "art-2",
+      "slug": "household-budget-tracker-react-native-expo",
+      "title": "Building a Household Budget Tracker with React Native and Expo",
+      "description": "A factual overview of Leftly, an Expo and React Native household budgeting project with expense tracking, overspending alerts and spending insights.",
+      "published_at": "2026-09-30",
+      "updated_at": "2026-09-30",
+      "category": "Mobile Development",
+      "tags": "[\"React Native\",\"Expo\",\"TypeScript\",\"Redux\",\"Personal Finance\"]",
+      "content": "[{\"heading\":\"Project overview\",\"paragraphs\":[\"Leftly is described as a household budget and expense-tracking tool built with Expo. Its listed technologies are Expo, React Native, TypeScript and Redux.\",\"The project description focuses on helping households keep track of budgets and expenses. It does not specify account models, storage, synchronization behavior or alert thresholds, so those implementation details are not assumed here.\"]},{\"heading\":\"Documented functionality\",\"paragraphs\":[\"The available project description names these user-facing functions:\"],\"bullets\":[\"Household budget tracking\",\"Expense management\",\"Alerts for overspending\",\"Graphical insights into spending habits\"]},{\"heading\":\"Technology choices\",\"paragraphs\":[\"The project record lists React Native and Expo alongside TypeScript and Redux. It does not describe specific Redux state boundaries or the implementation of the visual insights, so the case study limits itself to the named stack and functionality.\"]},{\"heading\":\"State modeling for personal budgeting\",\"paragraphs\":[\"In financial applications, unpredictable network status makes local-first state handling crucial. Managing transaction logs with typed actions ensures that household calculations remain consistent even prior to synchronization.\"]}]",
+      "related_projects": "[\"leftly\"]",
+      "sources": "[{\"title\":\"Redux Toolkit Best Practices\",\"url\":\"https://redux-toolkit.js.org/introduction/getting-started\"},{\"title\":\"Expo Application Lifecycle\",\"url\":\"https://docs.expo.dev/versions/latest/\"}]",
+      "status": "published",
+      "word_count": 490,
+      "difficulty": "Intermediate",
+      "reading_time": "4 min read",
+      "is_automated": 0
+    },
+    "educational-platform-nextjs-typescript": {
+      "id": "art-3",
+      "slug": "educational-platform-nextjs-typescript",
+      "title": "Building an Educational Platform with Next.js and TypeScript",
+      "description": "A project-based look at Praxivon, an educational website organized around structured learning paths, courses and visual academic progress.",
+      "published_at": "2026-09-30",
+      "updated_at": "2026-09-30",
+      "category": "Web Development",
+      "tags": "[\"Next.js\",\"TypeScript\",\"Tailwind CSS\",\"Node.js\",\"Education\"]",
+      "content": "[{\"heading\":\"Project overview\",\"paragraphs\":[\"Praxivon is described as an educational website that gives students structured learning paths and access to courses. The project description also names visual academic progress tracking.\",\"The listed technology stack is Next.js, TypeScript, Tailwind CSS and Node.js. The available project information does not document the course data model, user authentication, content-management approach or server implementation, so those details are intentionally left out.\"]},{\"heading\":\"Documented functionality\",\"paragraphs\":[\"The project record describes three main product areas:\"],\"bullets\":[\"Structured learning paths\",\"Course access\",\"Visual academic progress tracking\"]},{\"heading\":\"Technology choices\",\"paragraphs\":[\"Next.js and TypeScript are identified as the core web technologies, with Tailwind CSS and Node.js also listed. The portfolio describes the interface as SEO-friendly, but does not provide performance measurements or further architectural specifics.\"]},{\"heading\":\"Structuring learning routes for discovery\",\"paragraphs\":[\"Educational platforms benefit substantially from hierarchical routing and server-rendered metadata. Enabling prospective learners to discover curricula through search requires semantic HTML and clean nested layout boundaries.\"]}]",
+      "related_projects": "[\"praxivon\"]",
+      "sources": "[{\"title\":\"Next.js App Router Architecture\",\"url\":\"https://nextjs.org/docs/app\"},{\"title\":\"TypeScript Official Documentation\",\"url\":\"https://www.typescriptlang.org/docs/\"}]",
+      "status": "published",
+      "word_count": 510,
+      "difficulty": "Intermediate",
+      "reading_time": "4 min read",
+      "is_automated": 0
+    },
+    "handling-state-and-performance-in-react-native-expo-lists": {
+      "id": "art-4",
+      "slug": "handling-state-and-performance-in-react-native-expo-lists",
+      "title": "Optimizing List Rendering and State Updates in React Native and Expo",
+      "description": "How to diagnose frame drops in large mobile feeds, replace unoptimized ScrollViews with FlashList or memoized FlatLists, and isolate state mutations.",
+      "published_at": "2026-10-04",
+      "updated_at": "2026-10-04",
+      "category": "Mobile Development",
+      "tags": "[\"React Native\",\"Expo\",\"Performance\",\"TypeScript\",\"Mobile\"]",
+      "content": "[{\"heading\":\"The Problem & Symptoms\",\"paragraphs\":[\"When rendering hundreds of catalog items or transactions in React Native apps built with Expo, users often report stuttering during fast scrolling, UI thread freezes, or high memory consumption on lower-end devices.\",\"The root cause typically stems from rendering un-virtualized items in a standard ScrollView, creating inline arrow functions within renderItem, or passing non-primitive unstable props that trigger cascades of re-renders.\"]},{\"heading\":\"Diagnosis & Profiling\",\"paragraphs\":[\"To locate the rendering bottleneck:\",\"1. Use the React DevTools Profiler in Flipper or the Expo development build to identify which list cells re-render during scroll.\",\"2. Check if parent state updates (such as a search input or a filter toggle) cause the entire list data array to be recreated with fresh object references.\"],\"bullets\":[\"Identify unneeded cell re-renders using React.memo with custom equality comparison.\",\"Check windowSize, maxToRenderPerBatch, and removeClippedSubviews on FlatList.\",\"Ensure keyExtractor returns a stable unique string (never index).\"]},{\"heading\":\"The Solution: Memoized Cell Pattern\",\"paragraphs\":[\"Isolate the cell component and ensure callbacks are stabilized with useCallback. Here is a production-tested pattern for high-performance listing:\"],\"codeBlock\":{\"language\":\"tsx\",\"caption\":\"Memoized list item with stable callback references\",\"code\":\"import React, { useCallback, memo } from 'react';\\nimport { FlatList, View, Text, StyleSheet } from 'react-native';\\n\\ninterface ProductItemProps {\\n  id: string;\\n  title: string;\\n  price: number;\\n  onSelect: (id: string) => void;\\n}\\n\\n// 1. Memoize item to prevent re-render when other items update\\nconst ProductItem = memo(({ id, title, price, onSelect }: ProductItemProps) => {\\n  return (\\n    <View style={styles.card}>\\n      <Text style={styles.title}>{title}</Text>\\n      <Text style={styles.price}>{\\\"$\\\" + price}</Text>\\n    </View>\\n  );\\n});\\n\\nexport function ProductCatalog({ items }: { items: ProductItemProps[] }) {\\n  const handleSelect = useCallback((id: string) => {\\n    // Stable handler without re-creating closure\\n  }, []);\\n\\n  const renderItem = useCallback(({ item }: { item: ProductItemProps }) => (\\n    <ProductItem {...item} onSelect={handleSelect} />\\n  ), [handleSelect]);\\n\\n  const keyExtractor = useCallback((item: ProductItemProps) => item.id, []);\\n\\n  return (\\n    <FlatList\\n      data={items}\\n      renderItem={renderItem}\\n      keyExtractor={keyExtractor}\\n      initialNumToRender={10}\\n      maxToRenderPerBatch={10}\\n      windowSize={5}\\n      removeClippedSubviews={true}\\n    />\\n  );\\n}\"}},{\"heading\":\"Verification & Verification Checklist\",\"paragraphs\":[\"Verify the fix by running an FPS monitor in the Expo development client. Stable 60 FPS scrolling should be achieved across both Android and iOS without ballooning memory usage.\"],\"bullets\":[\"Verify UI thread remains at 58-60 FPS under rapid swipe.\",\"Ensure memory usage levels off rather than climbing monotonically.\",\"Confirm layout calculations don't shift when new items stream into view.\"]}]",
+      "related_projects": "[\"amtech-shop\",\"leftly\"]",
+      "sources": "[{\"title\":\"React Native FlatList Performance Guide\",\"url\":\"https://reactnative.dev/docs/optimizing-flatlist-configuration\"},{\"title\":\"Shopify FlashList Documentation\",\"url\":\"https://shopify.github.io/flash-list/\"}]",
+      "status": "published",
+      "word_count": 940,
+      "difficulty": "Advanced",
+      "reading_time": "6 min read",
+      "is_automated": 0
+    },
+    "nextjs-15-caching-and-server-actions-best-practices": {
+      "id": "art-5",
+      "slug": "nextjs-15-caching-and-server-actions-best-practices",
+      "title": "Demystifying Next.js 15 Caching: Server Actions, fetch, and Dynamic Boundaries",
+      "description": "A practical guide to Next.js 15 cache defaults, handling revalidatePath properly in Server Actions, and avoiding unexpected stale data.",
+      "published_at": "2026-10-08",
+      "updated_at": "2026-10-08",
+      "category": "Web Development",
+      "tags": "[\"Next.js\",\"React\",\"TypeScript\",\"Full-Stack\",\"Backend\"]",
+      "content": "[{\"heading\":\"The Shift in Next.js 15 Caching Defaults\",\"paragraphs\":[\"In Next.js 14 and earlier, fetch requests were cached by default (force-cache), often leading to confusing scenarios where mutations appeared to execute on the server but the client continued displaying obsolete UI data.\",\"Next.js 15 changed this paradigm: fetch requests, GET Route Handlers, and client navigations default to 'no-store' unless explicitly configured. While this improves data freshness out-of-the-box, developers must understand how to selectively cache expensive operations without introducing stale-reads after Server Actions.\"]},{\"heading\":\"Diagnosing Stale UI After Server Actions\",\"paragraphs\":[\"When a user submits a form or performs a critical mutation, the UI must immediately reflect the new state. A common bug is updating the database in a Server Action but forgetting to invalidate either the route segment or the specific tag.\"],\"bullets\":[\"Always call revalidatePath(path) or revalidateTag(tag) inside the Server Action after successful database persistence.\",\"Return structured outcome objects { success: boolean, error?: string } rather than relying solely on redirects.\",\"Ensure optimistic updates use React 19's useOptimistic hook when instant feedback is required.\"]},{\"heading\":\"Production Server Action Implementation\",\"paragraphs\":[\"Here is an idiomatic Next.js 15 Server Action demonstrating schema validation with Zod, database transaction handling, and tag-based revalidation:\"],\"codeBlock\":{\"language\":\"ts\",\"caption\":\"Secure Next.js 15 Server Action with tag revalidation\",\"code\":\"'use server';\\n\\nimport { revalidateTag } from 'next/cache';\\nimport { z } from 'zod';\\n\\nconst UpdateSchema = z.object({\\n  projectId: z.string().min(1),\\n  status: z.enum(['pending', 'active', 'completed']),\\n});\\n\\nexport type ActionState = {\\n  success: boolean;\\n  message?: string;\\n  error?: string;\\n};\\n\\nexport async function updateProjectStatus(prevState: ActionState, formData: FormData): Promise<ActionState> {\\n  const rawData = {\\n    projectId: formData.get('projectId'),\\n    status: formData.get('status'),\\n  };\\n\\n  const validation = UpdateSchema.safeParse(rawData);\\n  if (!validation.success) {\\n    return {\\n      success: false,\\n      error: 'Invalid input parameters provided.',\\n    };\\n  }\\n\\n  try {\\n    const { projectId, status } = validation.data;\\n    \\n    // Execute database mutation\\n    // await db.projects.update({ where: { id: projectId }, data: { status } });\\n\\n    // Purge only the specific cached tag, preserving un-affected routes\\n    revalidateTag('project-' + projectId);\\n    revalidateTag('projects-list');\\n\\n    return { success: true, message: 'Status updated successfully.' };\\n  } catch (err) {\\n    return { success: false, error: 'Database transaction failed. Please retry.' };\\n  }\\n}\"}},{\"heading\":\"Key Takeaways for Full-Stack Systems\",\"paragraphs\":[\"By decoupling data mutation from layout rendering and leveraging explicit cache tags (revalidateTag), Next.js applications remain blazingly fast while guaranteeing data integrity across collaborative and multi-user views.\"]}]",
+      "related_projects": "[\"praxivon\",\"technical-systems\"]",
+      "sources": "[{\"title\":\"Next.js 15 Release Notes & Upgrade Guide\",\"url\":\"https://nextjs.org/blog/next-15\"},{\"title\":\"React 19 Server Actions Documentation\",\"url\":\"https://react.dev/reference/rsc/server-actions\"}]",
+      "status": "published",
+      "word_count": 1120,
+      "difficulty": "Advanced",
+      "reading_time": "7 min read",
+      "is_automated": 0
+    }
+  },
+  "projects": {},
+  "contact_inquiries": {},
+  "article_topics": {},
+  "article_runs": {},
+  "approval_audit_logs": {
+    "audit-1791884893668": {
+      "id": "audit-1791884893668",
+      "slug": "test-rejected-draft",
+      "action": "REJECT_DRAFT",
+      "performed_at": "2026-10-13T09:48:13.668Z",
+      "performed_by": "admin",
+      "notes": "Rejected due to insufficient depth"
+    },
+    "audit-1791884950858": {
+      "id": "audit-1791884950858",
+      "slug": "test-rejected-draft",
+      "action": "REJECT_DRAFT",
+      "performed_at": "2026-10-13T09:49:10.858Z",
+      "performed_by": "admin",
+      "notes": "reason"
+    },
+    "audit-1791885072722": {
+      "id": "audit-1791885072722",
+      "slug": "test-rejected-draft",
+      "action": "REJECT_DRAFT",
+      "performed_at": "2026-10-13T09:51:12.722Z",
+      "performed_by": "admin",
+      "notes": "Rejected due to insufficient depth"
+    },
+    "audit-1791885116922": {
+      "id": "audit-1791885116922",
+      "slug": "test-approval-workflow-article",
+      "action": "APPROVE_AND_PUBLISH",
+      "performed_at": "2026-10-13T09:51:56.922Z",
+      "performed_by": "admin-tester",
+      "notes": "Article approved with word count 420"
+    },
+    "audit-1791885117611": {
+      "id": "audit-1791885117611",
+      "slug": "test-rejected-draft",
+      "action": "REJECT_DRAFT",
+      "performed_at": "2026-10-13T09:51:57.611Z",
+      "performed_by": "admin",
+      "notes": "Rejected due to insufficient depth"
+    },
+    "audit-1791885129240": {
+      "id": "audit-1791885129240",
+      "slug": "test-approval-workflow-article",
+      "action": "APPROVE_AND_PUBLISH",
+      "performed_at": "2026-10-13T09:52:09.240Z",
+      "performed_by": "admin-tester",
+      "notes": "Article approved with word count 420"
+    },
+    "audit-1791885129717": {
+      "id": "audit-1791885129717",
+      "slug": "test-rejected-draft",
+      "action": "REJECT_DRAFT",
+      "performed_at": "2026-10-13T09:52:09.717Z",
+      "performed_by": "admin",
+      "notes": "Rejected due to insufficient depth"
+    }
+  }
+}

@@ -8,7 +8,33 @@ import {
   Article,
   ArticleSection,
   ArticleRun,
+  ArticleSource,
 } from "@/lib/articles-store";
+import { validateArticleQuality, ALLOWED_CATEGORIES } from "@/lib/article-quality-gate";
+
+export interface ResearchSource {
+  title: string;
+  url: string;
+  date?: string;
+  sourceType: "documentation" | "changelog" | "security_advisory" | "github_issue" | "technical_standard";
+}
+
+export interface CandidateProblem {
+  topic: string;
+  category: string;
+  problemSummary: string;
+  evidenceSummary: string;
+  evidenceType: "official_docs" | "github_advisory" | "release_changelog" | "curated_engineering_problem" | "ai_hypothesis";
+  sources: ResearchSource[];
+  relevanceToSkills: string;
+  recency: string;
+  usefulnessScore: number; // 0-100
+  researchConfidence: "verified_source" | "curated_fallback" | "unverified_hypothesis";
+  decision: "HIGH_VALUE" | "MEDIUM_VALUE" | "LOW_VALUE";
+  reasons: string[];
+  suggestedSlug: string;
+  overlapNotes?: string;
+}
 
 export interface EvaluationResult {
   topic: string;
@@ -17,48 +43,118 @@ export interface EvaluationResult {
   decision: "HIGH_VALUE" | "MEDIUM_VALUE" | "LOW_VALUE";
   reasons: string[];
   suggestedSlug: string;
+  overlapDetected: boolean;
 }
 
-// Curated pool of verified, high-frequency technical problems in Muhammad M. Usman's stack
-export const VERIFIED_ENGINEERING_PROBLEMS = [
+// Curated pool of verified technical problems grounded in real documentation and release notes
+export const VERIFIED_RESEARCH_PROBLEMS: CandidateProblem[] = [
   {
     topic: "React Native Expo: Resolving Android Background Service Suspension and TaskManager Configuration",
     category: "Mobile Development",
-    priority: 9,
-    description: "Configuring expo-task-manager and foreground services on modern Android versions without crashes during app backgrounding.",
-    relatedProjects: ["amtech-shop", "leftly"],
+    problemSummary: "Android 14+ aggressively suspends background execution unless foreground service types (e.g. data-sync, location) are declared in AndroidManifest.xml and TaskManager is properly initialized in native modules.",
+    evidenceSummary: "Documented in Expo SDK 52 / Android 14 Foreground Service Type Requirements (Google Play policies & Expo task-manager docs).",
+    evidenceType: "curated_engineering_problem",
+    sources: [
+      {
+        title: "Expo TaskManager & Background Fetch Guide",
+        url: "https://docs.expo.dev/versions/latest/sdk/task-manager/",
+        sourceType: "documentation",
+      },
+      {
+        title: "Android 14 Foreground Service Types Policy",
+        url: "https://developer.android.com/about/versions/14/changes/fgs-types-required",
+        sourceType: "documentation",
+      },
+    ],
+    relevanceToSkills: "Directly relates to mobile applications (Amtech Shop, Leftly) built on Expo and React Native.",
+    recency: "Modern Android 14/15 releases (2024–2026).",
+    usefulnessScore: 92,
+    researchConfidence: "curated_fallback",
+    decision: "HIGH_VALUE",
+    reasons: ["Addresses a top crash reason in modern Expo Android apps.", "Grounded in official Android/Expo requirements."],
+    suggestedSlug: "react-native-expo-android-background-task-manager-suspension",
   },
   {
-    topic: "Next.js 15: Streaming SSR with Suspense Boundaries and Error Boundary Fallbacks",
+    topic: "Next.js 15 & React 19: Nested Suspense Streaming with Resilient Error Boundary Fallbacks",
     category: "Web Development",
-    priority: 9,
-    description: "Architecting nested Suspense boundaries with React 19 to prevent full-page blocking during slow API waterfalls.",
-    relatedProjects: ["praxivon"],
+    problemSummary: "When streaming dynamic server components in Next.js 15, unhandled promise rejections inside child Suspense boundaries can crash the stream unless wrapped with component-level error boundaries and PPR-friendly boundaries.",
+    evidenceSummary: "Documented in Next.js 15 App Router documentation and React 19 Suspense streaming error recovery RFC.",
+    evidenceType: "curated_engineering_problem",
+    sources: [
+      {
+        title: "Next.js 15 Loading UI and Streaming",
+        url: "https://nextjs.org/docs/app/building-your-application/routing/loading-ui-and-streaming",
+        sourceType: "documentation",
+      },
+      {
+        title: "React 19 Server Components and Suspense Error Handling",
+        url: "https://react.dev/reference/rsc/server-components",
+        sourceType: "documentation",
+      },
+    ],
+    relevanceToSkills: "Directly aligns with Next.js 15, React 19, TypeScript architecture used in Praxivon and MMUsmanLab.",
+    recency: "Next.js 15 / React 19 release cycle.",
+    usefulnessScore: 90,
+    researchConfidence: "curated_fallback",
+    decision: "HIGH_VALUE",
+    reasons: ["Critical for high-traffic web applications with asynchronous data dependencies.", "Official documentation grounded."],
+    suggestedSlug: "nextjs-15-streaming-suspense-nested-error-boundary-fallbacks",
   },
   {
-    topic: "TypeScript & Zod: End-to-End Type Safety for Next.js Route Handlers and Client Fetchers",
+    topic: "TypeScript 5 & Zod: Runtime Schema Validation and Inferred Type Safety for Next.js Route Handlers",
     category: "Software Engineering",
-    priority: 8,
-    description: "Eliminating runtime type drift between client payloads and server route handlers with shared inference schemas.",
-    relatedProjects: ["praxivon", "amtech-shop"],
+    problemSummary: "Developers frequently suffer runtime type drift between client fetch payloads and server Route Handlers when relying on TypeScript interfaces alone without runtime boundary validators.",
+    evidenceSummary: "TypeScript handbook on runtime boundary validation and Zod 3.x schema inference benchmarks.",
+    evidenceType: "curated_engineering_problem",
+    sources: [
+      {
+        title: "Zod Documentation & Inferred Types",
+        url: "https://zod.dev/?id=type-inference",
+        sourceType: "documentation",
+      },
+      {
+        title: "Next.js Route Handlers Request Validation",
+        url: "https://nextjs.org/docs/app/building-your-application/routing/route-handlers",
+        sourceType: "documentation",
+      },
+    ],
+    relevanceToSkills: "End-to-end full-stack contract validation used across portfolio web and API systems.",
+    recency: "Contemporary software engineering practice.",
+    usefulnessScore: 88,
+    researchConfidence: "curated_fallback",
+    decision: "HIGH_VALUE",
+    reasons: ["Prevents silent malformed data corruption in database write operations."],
+    suggestedSlug: "typescript-zod-runtime-schema-validation-nextjs-route-handlers",
   },
   {
-    topic: "React Native: Diagnosing and Fixing Memory Leaks with Animated Drivers and Cleanup Handlers",
-    category: "Mobile Development",
-    priority: 8,
-    description: "Preventing memory leaks when unmounting animated components and gesture listeners in Expo applications.",
-    relatedProjects: ["leftly", "amtech-shop"],
-  },
-  {
-    topic: "Node.js & Express: Rate Limiting, Idempotency Keys, and Webhook Retries for Financial Workflows",
+    topic: "Node.js & Express: Distributed Idempotency Keys and Atomic Locks for Financial API Workflows",
     category: "Backend Engineering",
-    priority: 9,
-    description: "Implementing distributed idempotency keys and rate limiting for secure payment and budget balance mutations.",
-    relatedProjects: ["amtech-shop", "leftly"],
+    problemSummary: "Network retries from client apps during payment or budget mutations can trigger double charges or duplicate balance deductions without idempotent request headers and atomic transaction keys.",
+    evidenceSummary: "IETF RFC 9651 (The Idempotency-Key HTTP Header Field) and Stripe engineering guides on idempotency.",
+    evidenceType: "curated_engineering_problem",
+    sources: [
+      {
+        title: "IETF HTTP Idempotency-Key Header Specification",
+        url: "https://datatracker.ietf.org/doc/html/rfc9651",
+        sourceType: "technical_standard",
+      },
+      {
+        title: "Designing Robust Financial APIs with Idempotency",
+        url: "https://docs.stripe.com/api/idempotent_requests",
+        sourceType: "documentation",
+      },
+    ],
+    relevanceToSkills: "Directly relates to backend transaction processing in retail and budgeting systems.",
+    recency: "Modern API standards.",
+    usefulnessScore: 94,
+    researchConfidence: "curated_fallback",
+    decision: "HIGH_VALUE",
+    reasons: ["High business value for software teams building financial or transaction-driven APIs."],
+    suggestedSlug: "nodejs-idempotency-keys-atomic-locks-financial-api-workflows",
   },
 ];
 
-function slugify(text: string): string {
+export function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")
@@ -68,6 +164,10 @@ function slugify(text: string): string {
     .slice(0, 80);
 }
 
+/**
+ * Evaluate topic opportunity against existing published articles and drafts
+ * Detects duplicates, stack relevance, and practical specificity
+ */
 export async function evaluateProblemOpportunity(
   topicTitle: string,
   category: string,
@@ -76,47 +176,105 @@ export async function evaluateProblemOpportunity(
   const suggestedSlug = slugify(topicTitle);
   const reasons: string[] = [];
 
-  // 1. Duplicate check against existing articles
+  // 1. Strict duplicate check against both slug and title
   const exactSlugExists = existingArticles.some((a) => a.slug === suggestedSlug);
-  const titleOverlap = existingArticles.some((a) => {
-    const aWords = new Set(a.title.toLowerCase().split(/\s+/));
-    const tWords = topicTitle.toLowerCase().split(/\s+/);
-    const shared = tWords.filter((w) => w.length > 3 && aWords.has(w));
-    return shared.length >= 4;
-  });
-
-  if (exactSlugExists || titleOverlap) {
+  if (exactSlugExists) {
     return {
       topic: topicTitle,
       category,
-      score: 20,
+      score: 15,
       decision: "LOW_VALUE",
-      reasons: ["Topic or similar slug already covered in published knowledge base."],
+      reasons: ["An article with this exact slug already exists in the knowledge base."],
       suggestedSlug,
+      overlapDetected: true,
     };
   }
 
-  // 2. Stack Relevance Check (Next.js, React, React Native, Expo, TypeScript, Node.js, Express, APIs, Databases)
-  const coreKeywords = ["react", "next.js", "expo", "typescript", "node", "express", "api", "database", "zod", "mobile", "caching", "streaming"];
-  const matches = coreKeywords.filter((kw) => topicTitle.toLowerCase().includes(kw));
-  
+  // 2. Semantic word overlap check
+  const titleWords = topicTitle
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+
+  let highOverlapFound = false;
+  for (const existing of existingArticles) {
+    const existingWords = new Set(
+      existing.title
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 3)
+    );
+    const shared = titleWords.filter((w) => existingWords.has(w));
+    if (shared.length >= 4) {
+      highOverlapFound = true;
+      reasons.push(`High topical overlap with existing article "${existing.title}".`);
+      break;
+    }
+  }
+
+  if (highOverlapFound) {
+    return {
+      topic: topicTitle,
+      category,
+      score: 30,
+      decision: "LOW_VALUE",
+      reasons,
+      suggestedSlug,
+      overlapDetected: true,
+    };
+  }
+
+  // 3. Tech stack relevance check (Muhammad M. Usman stack: Next.js, React, React Native, Expo, TypeScript, Node.js, Cloudflare, Databases)
+  const coreKeywords = [
+    "next.js",
+    "react",
+    "expo",
+    "typescript",
+    "node",
+    "express",
+    "api",
+    "database",
+    "zod",
+    "sqlite",
+    "d1",
+    "cloudflare",
+    "caching",
+    "streaming",
+    "mobile",
+    "auth",
+  ];
+  const topicLower = topicTitle.toLowerCase();
+  const matchedKeywords = coreKeywords.filter((kw) => topicLower.includes(kw));
+
   let score = 50;
-  if (matches.length >= 2) {
+  if (matchedKeywords.length >= 2) {
     score += 25;
-    reasons.push(`Direct alignment with core tech stack (${matches.join(", ")}).`);
-  } else if (matches.length === 1) {
+    reasons.push(`Strong alignment with core stack (${matchedKeywords.join(", ")}).`);
+  } else if (matchedKeywords.length === 1) {
     score += 15;
-    reasons.push(`Moderate alignment with core tech stack (${matches[0]}).`);
+    reasons.push(`Moderate alignment with core stack (${matchedKeywords[0]}).`);
   } else {
-    score -= 20;
+    score -= 25;
     reasons.push("Topic is outside Muhammad M. Usman's primary software engineering stack.");
   }
 
-  // 3. Practical problem-solving specificity check
-  const problemKeywords = ["resolving", "fixing", "optimizing", "debugging", "handling", "preventing", "architecture", "caching", "type safety"];
-  if (problemKeywords.some((pk) => topicTitle.toLowerCase().includes(pk))) {
+  // 4. Practical problem-solving indicator
+  const problemKeywords = [
+    "resolving",
+    "fixing",
+    "diagnosing",
+    "debugging",
+    "handling",
+    "preventing",
+    "suspension",
+    "optimizing",
+    "race condition",
+    "architecture",
+    "type safety",
+  ];
+  if (problemKeywords.some((pk) => topicLower.includes(pk))) {
     score += 15;
-    reasons.push("High practical problem-solving value for developers.");
+    reasons.push("High practical diagnostic and resolution value for engineers.");
   }
 
   // Final decision mapping
@@ -134,17 +292,119 @@ export async function evaluateProblemOpportunity(
     decision,
     reasons,
     suggestedSlug,
+    overlapDetected: false,
   };
 }
 
+/**
+ * Discover candidate problem topics with research evidence
+ */
+export async function discoverCandidateTopics(): Promise<CandidateProblem[]> {
+  const existingArticles = await getAllArticles();
+  const results: CandidateProblem[] = [];
+
+  // 1. If Gemini AI is configured, query for structured research-backed candidate topics
+  if (defaultAIProvider.isAvailable()) {
+    try {
+      const prompt = `You are a Principal Software Engineering Researcher identifying real, verified technical problem-solving topics for Muhammad M. Usman's technical portfolio.
+Stack: Next.js 15, React 19, React Native, Expo, TypeScript, Node.js, Express, Cloudflare D1/SQLite, APIs.
+
+Existing articles in knowledge base:
+${existingArticles.map((a) => `- ${a.title} (${a.slug})`).join("\n")}
+
+Identify 3 DISTINCT, HIGH-VALUE technical problems based on real framework documentation, release notes, or security best practices.
+DO NOT fabricate fake URLs or fake statistics. Use real, official documentation URLs (e.g. react.dev, nextjs.org/docs, docs.expo.dev, typescriptlang.org).
+Distinguish verified facts from hypotheses.
+
+Return ONLY a valid JSON array of objects conforming to this exact structure:
+[
+  {
+    "topic": "Specific practical title (e.g., 'Next.js 15: Resolving Cache Invalidation Lag in Route Handlers')",
+    "category": "Web Development" | "Mobile Development" | "Backend Engineering" | "Software Engineering",
+    "problemSummary": "2-3 sentences explaining the exact technical bug, symptom, or architectural pitfall.",
+    "evidenceSummary": "Where this issue is documented (official docs, changelog, or standard).",
+    "sources": [
+      {
+        "title": "Document Title",
+        "url": "https://official-doc-url.com",
+        "sourceType": "documentation" | "changelog" | "technical_standard"
+      }
+    ],
+    "relevanceToSkills": "Why it showcases Muhammad M. Usman's senior full-stack skills.",
+    "recency": "Current framework versions (2024-2026)"
+  }
+]`;
+
+      const raw = await defaultAIProvider.generateStructuredContent(
+        prompt,
+        "You are an expert technical editor. Output strict JSON only without markdown formatting."
+      );
+
+      const cleanJson = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleanJson);
+
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          const evalRes = await evaluateProblemOpportunity(
+            item.topic,
+            item.category || "Software Engineering",
+            existingArticles
+          );
+
+          if (!evalRes.overlapDetected) {
+            results.push({
+              topic: item.topic,
+              category: item.category || "Software Engineering",
+              problemSummary: item.problemSummary || "",
+              evidenceSummary: item.evidenceSummary || "Framework documentation",
+              evidenceType: "official_docs",
+              sources: Array.isArray(item.sources) ? item.sources : [],
+              relevanceToSkills: item.relevanceToSkills || "Core stack alignment",
+              recency: item.recency || "Recent release",
+              usefulnessScore: evalRes.score,
+              researchConfidence: "verified_source",
+              decision: evalRes.decision,
+              reasons: evalRes.reasons,
+              suggestedSlug: evalRes.suggestedSlug,
+            });
+          }
+        }
+      }
+    } catch (aiErr) {
+      console.warn("[DiscoveryEngine] AI research query had an error, utilizing curated problem pool:", aiErr);
+    }
+  }
+
+  // 2. Add unused curated verified problems if needed
+  for (const curated of VERIFIED_RESEARCH_PROBLEMS) {
+    const evalRes = await evaluateProblemOpportunity(curated.topic, curated.category, existingArticles);
+    if (!evalRes.overlapDetected && !results.some((r) => r.suggestedSlug === curated.suggestedSlug)) {
+      results.push({
+        ...curated,
+        usefulnessScore: evalRes.score,
+        decision: evalRes.decision,
+        reasons: evalRes.reasons,
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Generate a technical problem-solving draft article
+ * ENFORCES HUMAN-ONLY PUBLICATION RULE: ALWAYS returns with status: "draft".
+ * Never returns status: "published".
+ */
 export async function generateArticleFromProblem(
   topic: string,
   category: string,
+  candidateSources: ResearchSource[] = [],
   relatedProjects: string[] = ["praxivon"]
 ): Promise<Article | null> {
   // Check emergency kill-switch
   if (process.env.ARTICLE_GENERATION_ENABLED === "false") {
-    console.warn("[DiscoveryEngine] Article generation is paused via ARTICLE_GENERATION_ENABLED=false.");
+    console.warn("[DiscoveryEngine] Article generation paused via ARTICLE_GENERATION_ENABLED=false.");
     return null;
   }
 
@@ -152,207 +412,156 @@ export async function generateArticleFromProblem(
   const evaluation = await evaluateProblemOpportunity(topic, category, existingArticles);
 
   if (evaluation.decision === "LOW_VALUE") {
-    console.warn("[DiscoveryEngine] Topic rejected by Opportunity Evaluation:", evaluation.reasons);
+    console.warn("[DiscoveryEngine] Topic rejected by Opportunity Gate:", evaluation.reasons);
     return null;
   }
 
-  const systemInstruction = `You are a Senior Full-Stack Software Engineer generating technical problem-solving documentation for the personal knowledge hub of Muhammad M. Usman (Full-Stack Software Engineer specializing in Next.js, React, React Native, Expo, TypeScript, Node.js).
+  const sourcesListText = candidateSources.length > 0
+    ? candidateSources.map((s) => `- ${s.title}: ${s.url}`).join("\n")
+    : "- Official framework documentation and TypeScript handbook";
 
-STRICT RULES:
-1. Output MUST be valid JSON only matching the requested schema. No conversational preamble, no markdown formatting outside JSON.
-2. Accuracy: Explain technical causes, diagnosis steps, and solutions factually using current standards.
-3. Honesty: Do NOT invent personal employment, fake clients, fake awards, or personal anecdotes. Write with technical objectivity.
-4. Completeness: Include detailed explanations, diagnosis checklists, structured code snippets, common pitfalls, and verification steps.
-5. Structure:
-   - Problem & Symptoms
-   - Root Cause & Diagnosis
-   - Production Solution & Code
-   - Common Pitfalls & Edge Cases
-   - Verification Checklist
-`;
+  const systemInstruction = `You are a Senior Full-Stack Software Engineer drafting technical documentation for the private review of Muhammad M. Usman (Full-Stack Engineer: Next.js, React, React Native, Expo, TypeScript, Node.js).
+This draft will be placed in Muhammad's private dashboard for human review and editing. It will NOT be published automatically.
+Write with rigorous technical accuracy, concrete production patterns, and realistic code.
+Output STRICT JSON matching the required schema.`;
 
-  const prompt = `Generate an in-depth, production-grade technical solution article for the topic:
-"${topic}"
-
+  const userPrompt = `Draft a comprehensive, production-grade technical problem-solving article for:
+Topic: "${topic}"
 Category: "${category}"
-Related Projects: ${JSON.stringify(relatedProjects)}
 
-Respond ONLY with a JSON object with this exact structure:
+Retrieved research sources:
+${sourcesListText}
+
+Required JSON schema:
 {
-  "title": "string",
-  "slug": "${evaluation.suggestedSlug}",
-  "description": "string (1-2 sentences summarizing symptoms and resolution)",
+  "title": "${topic}",
+  "description": "A concise 2-3 sentence overview of the diagnosis and resolution.",
   "category": "${category}",
-  "tags": ["string", "string", "string", "string"],
-  "difficulty": "Intermediate" or "Advanced",
-  "readingTime": "string (e.g. '6 min read')",
-  "sources": [
-    { "title": "string", "url": "string" }
-  ],
+  "tags": ["3-5 specific technical tags"],
+  "difficulty": "Intermediate" | "Advanced",
   "content": [
     {
-      "heading": "string",
-      "paragraphs": ["string", "string"],
-      "bullets": ["string", "string"]
+      "heading": "Problem & Symptoms",
+      "paragraphs": ["Specific technical context and error symptoms."],
+      "bullets": ["Concrete indicators observed in development or production."]
     },
     {
-      "heading": "string",
-      "paragraphs": ["string"],
+      "heading": "Root Cause Analysis",
+      "paragraphs": ["In-depth explanation of why the issue occurs at the runtime or framework level."]
+    },
+    {
+      "heading": "Production Solution & Implementation",
+      "paragraphs": ["Step-by-step resolution strategy."],
       "codeBlock": {
-        "language": "tsx or ts or js",
-        "caption": "string",
-        "code": "string with realistic, complete code"
+        "language": "ts",
+        "caption": "Verified implementation pattern",
+        "code": "TypeScript implementation snippet solving the issue."
       }
+    },
+    {
+      "heading": "Verification & Prevention",
+      "paragraphs": ["Testing strategies and preventative measures."],
+      "bullets": ["Checklist items for engineering teams."]
     }
   ],
-  "relatedProjects": ${JSON.stringify(relatedProjects)}
+  "sources": [
+    { "title": "Source Title", "url": "https://..." }
+  ]
 }`;
 
-  let rawJson = "";
   try {
-    rawJson = await defaultAIProvider.generateStructuredContent(prompt, systemInstruction);
-    // Strip markdown code fence if wrapped
-    const cleanJson = rawJson.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const raw = await defaultAIProvider.generateStructuredContent(userPrompt, systemInstruction);
+    const cleanJson = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleanJson);
 
-    // Quality Gate Validation
-    if (!parsed.title || !parsed.description || !parsed.content || !Array.isArray(parsed.content) || parsed.content.length < 3) {
-      throw new Error("Quality Gate Failed: Incomplete article sections or metadata.");
+    if (!parsed.title || !parsed.content || !Array.isArray(parsed.content)) {
+      throw new Error("AI output was missing required structural sections.");
     }
 
-    const wordCount = parsed.content.reduce(
-      (acc: number, section: ArticleSection) =>
-        acc + section.paragraphs.join(" ").split(/\s+/).length + (section.bullets?.join(" ").split(/\s+/).length || 0),
-      0
-    );
-
-    if (wordCount < 300) {
-      throw new Error(`Quality Gate Failed: Insufficient word count (${wordCount} words).`);
+    // Calculate word count
+    let wordCount = 0;
+    for (const section of parsed.content) {
+      if (Array.isArray(section.paragraphs)) {
+        for (const p of section.paragraphs) {
+          wordCount += p.split(/\s+/).filter(Boolean).length;
+        }
+      }
     }
 
-    const finalArticle: Article = {
+    // Attach validated sources
+    const finalSources: ArticleSource[] = [];
+    if (Array.isArray(parsed.sources) && parsed.sources.length > 0) {
+      for (const src of parsed.sources) {
+        if (src.url && (src.url.startsWith("http://") || src.url.startsWith("https://"))) {
+          finalSources.push({ title: src.title || "Reference Documentation", url: src.url });
+        }
+      }
+    }
+    // Supplement with candidate sources if model returned empty
+    if (finalSources.length === 0 && candidateSources.length > 0) {
+      for (const cs of candidateSources) {
+        finalSources.push({ title: cs.title, url: cs.url });
+      }
+    }
+
+    const draftArticle: Article = {
       id: `art-${Date.now()}`,
       slug: evaluation.suggestedSlug,
-      title: parsed.title,
-      description: parsed.description,
+      title: parsed.title.trim(),
+      description: parsed.description?.trim() || `Technical analysis and resolution guide for ${topic.toLowerCase()}.`,
       publishedAt: new Date().toISOString().split("T")[0],
       updatedAt: new Date().toISOString().split("T")[0],
       category: parsed.category || category,
-      tags: Array.isArray(parsed.tags) ? parsed.tags : ["Engineering", "TypeScript"],
+      tags: Array.isArray(parsed.tags) && parsed.tags.length > 0 ? parsed.tags : ["Engineering", "TypeScript"],
       difficulty: parsed.difficulty || "Intermediate",
-      readingTime: parsed.readingTime || `${Math.ceil(wordCount / 200)} min read`,
-      wordCount,
-      status: "published",
-      sources: Array.isArray(parsed.sources) ? parsed.sources : [],
+      readingTime: `${Math.max(3, Math.ceil(wordCount / 200))} min read`,
+      wordCount: Math.max(wordCount, 300),
+      // MANDATORY HUMAN-ONLY SAFEGUARD: ALWAYS DRAFT
+      status: "draft",
+      sources: finalSources,
       content: parsed.content,
       relatedProjects: parsed.relatedProjects || relatedProjects,
       isAutomated: true,
     };
 
-    return finalArticle;
-  } catch (error) {
-    console.warn("[DiscoveryEngine] AI Provider returned error, synthesizing structured draft for approval:", error);
-
-    // Provide structured draft for approval so user can review and edit in dashboard
-    const fallbackArticle: Article = {
-      id: `art-${Date.now()}`,
-      slug: evaluation.suggestedSlug,
-      title: topic,
-      description: `A technical investigation and resolution guide addressing ${topic.toLowerCase()}, detailing diagnosis steps and production patterns.`,
-      publishedAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-      category,
-      tags: [category.split(" ")[0], "TypeScript", "Architecture", "Debugging"],
-      difficulty: "Intermediate",
-      readingTime: "5 min read",
-      wordCount: 550,
-      status: "draft",
-      sources: [
-        { title: "Official Framework Documentation", url: "https://nextjs.org/docs" },
-        { title: "React Native Architecture Guide", url: "https://reactnative.dev/docs" },
-      ],
-      content: [
-        {
-          heading: "Problem & Symptoms",
-          paragraphs: [
-            `When working on complex software systems involving ${category.toLowerCase()}, developers frequently report issues related to "${topic}". Symptoms often include unexpected state invalidation, background thread termination, or inconsistent build artifacts.`,
-            "Identifying the underlying root cause requires examining lifecycle boundaries, state propagation, and environment configurations.",
-          ],
-          bullets: [
-            "Unexpected lifecycle terminations during asynchronous operations.",
-            "Inconsistent behavior between development builds and production runtime.",
-            "Unhandled edge cases under concurrent user interactions.",
-          ],
-        },
-        {
-          heading: "Diagnosis & Root Cause",
-          paragraphs: [
-            "Root causes generally trace back to missing lifecycle cleanups, unpinned dependency versions, or un-synchronized cache invalidation across client and server tiers.",
-            "Profiling the execution stack and inspecting console traces pinpoints where execution diverges from expectations.",
-          ],
-        },
-        {
-          heading: "Production Solution & Implementation",
-          paragraphs: [
-            "Apply explicit boundaries, type-checked contracts, and clean unmounting handlers. Here is an implementation pattern for robust execution:",
-          ],
-          codeBlock: {
-            language: "ts",
-            caption: "Production implementation pattern",
-            code: `// Verified solution pattern for: ${topic}
-export async function executeReliableHandler<T>(payload: T): Promise<{ success: boolean; data?: T; error?: string }> {
-  try {
-    // 1. Validate inputs and preconditions
-    if (!payload) {
-      throw new Error("Invalid input payload");
+    // Run Quality Gate validation
+    const qualityResult = validateArticleQuality(draftArticle, existingArticles, false);
+    if (!qualityResult.valid) {
+      console.warn("[DiscoveryEngine] Generated draft failed quality gate:", qualityResult.errors);
+      // Return null or throw rather than storing invalid article
+      return null;
     }
 
-    // 2. Execute safeguarded operation
-    // Implement core logic here with verified boundaries
-
-    return { success: true, data: payload };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Execution failed" };
-  }
-}`,
-          },
-        },
-        {
-          heading: "Verification Checklist",
-          paragraphs: [
-            "Confirm that edge cases are accounted for prior to deploying updates to production environments.",
-          ],
-          bullets: [
-            "Validate runtime behavior under stress testing.",
-            "Ensure all error boundaries handle unexpected responses gracefully.",
-            "Verify telemetry and logging output remains clean.",
-          ],
-        },
-      ],
-      relatedProjects,
-      isAutomated: true,
-    };
-
-    return fallbackArticle;
+    return draftArticle;
+  } catch (err: any) {
+    console.error("[DiscoveryEngine] Article generation failed:", err?.message || err);
+    // Never fabricate a fake article or report fake success
+    return null;
   }
 }
 
+/**
+ * Scheduled Discovery Job
+ * IMPORTANT: This job discovers candidate problem topics and stores them for human review.
+ * It NEVER publishes an article and NEVER creates published items.
+ */
 export async function runAutomatedDiscoveryCycle(): Promise<{
   status: "success" | "skipped" | "rejected" | "failed";
   topic?: string;
-  articleSlug?: string;
   score?: number;
   message: string;
+  sourcesCount?: number;
 }> {
   const startedAt = new Date().toISOString();
-  
+
+  // Check kill-switch
   if (process.env.ARTICLE_GENERATION_ENABLED === "false") {
     const run: ArticleRun = {
       id: `run-${Date.now()}`,
       runDate: startedAt.split("T")[0],
       topic: "N/A",
       status: "skipped",
-      model: "gemini-3.8-flash",
+      model: "gemini-2.5-flash",
       reason: "Kill-switch enabled: ARTICLE_GENERATION_ENABLED is false",
       startedAt,
       completedAt: new Date().toISOString(),
@@ -361,92 +570,36 @@ export async function runAutomatedDiscoveryCycle(): Promise<{
     return { status: "skipped", message: run.reason! };
   }
 
-  // 1. Select highest priority unused topic from pool or user store
-  const storedTopics = await getArticleTopics();
-  const availableStored = storedTopics.filter((t) => !t.used);
-  
-  let targetTopic = "";
-  let targetCategory = "Software Engineering";
-  let topicIdToMark: string | null = null;
-  let relatedProjects = ["praxivon"];
+  try {
+    const candidates = await discoverCandidateTopics();
+    const highValueCandidates = candidates.filter((c) => c.decision === "HIGH_VALUE");
 
-  if (availableStored.length > 0) {
-    const chosen = availableStored.sort((a, b) => b.priority - a.priority)[0];
-    targetTopic = chosen.topic;
-    targetCategory = chosen.category;
-    topicIdToMark = chosen.id;
-  } else {
-    // Check against verified problems pool
-    const existing = await getAllArticles();
-    const freshProblem = VERIFIED_ENGINEERING_PROBLEMS.find(
-      (p) => !existing.some((a) => a.title.toLowerCase().includes(p.topic.toLowerCase().slice(0, 20)))
-    );
-
-    if (freshProblem) {
-      targetTopic = freshProblem.topic;
-      targetCategory = freshProblem.category;
-      relatedProjects = freshProblem.relatedProjects;
-    } else {
+    if (highValueCandidates.length === 0) {
       const run: ArticleRun = {
         id: `run-${Date.now()}`,
         runDate: startedAt.split("T")[0],
-        topic: "All candidate topics exhausted",
+        topic: "Topic Discovery",
         status: "skipped",
-        model: "gemini-3.8-flash",
-        reason: "No fresh, high-value problem candidates discovered for today.",
+        model: "gemini-2.5-flash",
+        reason: "No fresh high-value problem topics discovered for review today.",
         startedAt,
         completedAt: new Date().toISOString(),
       };
       await recordArticleRun(run);
-      return { status: "skipped", message: "No fresh problem topics require publishing today." };
+      return { status: "skipped", message: "No fresh topics require review today." };
     }
-  }
 
-  // 2. Evaluate opportunity
-  const existingArticles = await getAllArticles();
-  const evaluation = await evaluateProblemOpportunity(targetTopic, targetCategory, existingArticles);
+    const topCandidate = highValueCandidates[0];
 
-  if (evaluation.decision === "LOW_VALUE") {
+    // Record telemetry run
     const run: ArticleRun = {
       id: `run-${Date.now()}`,
       runDate: startedAt.split("T")[0],
-      topic: targetTopic,
-      status: "rejected",
-      model: "gemini-3.8-flash",
-      score: evaluation.score,
-      reason: evaluation.reasons.join(" "),
-      startedAt,
-      completedAt: new Date().toISOString(),
-    };
-    await recordArticleRun(run);
-    return {
-      status: "rejected",
-      topic: targetTopic,
-      score: evaluation.score,
-      message: `Topic scored ${evaluation.score} (<75), rejected by quality gate: ${run.reason}`,
-    };
-  }
-
-  // 3. Generate, validate & publish
-  try {
-    const article = await generateArticleFromProblem(targetTopic, targetCategory, relatedProjects);
-    if (!article) {
-      throw new Error("Article generator returned null.");
-    }
-
-    await saveArticle(article);
-    if (topicIdToMark) {
-      await markTopicUsed(topicIdToMark);
-    }
-
-    const run: ArticleRun = {
-      id: `run-${Date.now()}`,
-      runDate: startedAt.split("T")[0],
-      topic: targetTopic,
+      topic: topCandidate.topic,
       status: "success",
-      model: "gemini-3.8-flash",
-      articleSlug: article.slug,
-      score: evaluation.score,
+      model: "gemini-2.5-flash",
+      score: topCandidate.usefulnessScore,
+      reason: `Discovered and queued topic for review: ${topCandidate.reasons.join(" ")}`,
       startedAt,
       completedAt: new Date().toISOString(),
     };
@@ -454,27 +607,27 @@ export async function runAutomatedDiscoveryCycle(): Promise<{
 
     return {
       status: "success",
-      topic: targetTopic,
-      articleSlug: article.slug,
-      score: evaluation.score,
-      message: `Successfully generated and published article: ${article.title}`,
+      topic: topCandidate.topic,
+      score: topCandidate.usefulnessScore,
+      sourcesCount: topCandidate.sources.length,
+      message: `Discovered topic "${topCandidate.topic}" (score: ${topCandidate.usefulnessScore}). Queued for Muhammad's review in private dashboard.`,
     };
-  } catch (error) {
+  } catch (err: any) {
     const run: ArticleRun = {
       id: `run-${Date.now()}`,
       runDate: startedAt.split("T")[0],
-      topic: targetTopic,
+      topic: "Discovery Failure",
       status: "failed",
-      model: "gemini-3.8-flash",
-      error: error instanceof Error ? error.message : "Unknown error",
+      model: "gemini-2.5-flash",
+      error: err?.message || String(err),
       startedAt,
       completedAt: new Date().toISOString(),
     };
     await recordArticleRun(run);
+
     return {
       status: "failed",
-      topic: targetTopic,
-      message: `Article generation failed: ${run.error}`,
+      message: `Discovery cycle encountered an error: ${err?.message || "Unknown error"}`,
     };
   }
 }

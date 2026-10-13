@@ -1,0 +1,65 @@
+[
+  {
+    "id": "1791885130322-tljpf7",
+    "name": "Engineering Test Client",
+    "email": "test.client@example.com",
+    "message": "Inquiry to verify contact storage persistence and integrity.",
+    "projectType": "Full-Stack Web App",
+    "company": "Acme Corp",
+    "createdAt": "2026-10-13T09:52:10.322Z"
+  },
+  {
+    "id": "1791885118476-jafe6o",
+    "name": "Engineering Test Client",
+    "email": "test.client@example.com",
+    "message": "Inquiry to verify contact storage persistence and integrity.",
+    "projectType": "Full-Stack Web App",
+    "company": "Acme Corp",
+    "createdAt": "2026-10-13T09:51:58.476Z"
+  },
+  {
+    "id": "1791885073631-gix2b5",
+    "name": "Engineering Test Client",
+    "email": "test.client@example.com",
+    "message": "Inquiry to verify contact storage persistence and integrity.",
+    "projectType": "Full-Stack Web App",
+    "company": "Acme Corp",
+    "createdAt": "2026-10-13T09:51:13.631Z"
+  },
+  {
+    "id": "1791884894532-zbnubj",
+    "name": "Engineering Test Client",
+    "email": "test.client@example.com",
+    "message": "Inquiry to verify contact storage persistence and integrity.",
+    "projectType": "Full-Stack Web App",
+    "company": "Acme Corp",
+    "createdAt": "2026-10-13T09:48:14.532Z"
+  },
+  {
+    "id": "inq-102",
+    "name": "Elena Rostova",
+    "email": "elena.r@cloudbridge.net",
+    "message": "Looking for consultation on serverless Next.js 15 migration and Cloudflare edge database optimization.",
+    "projectType": "Full-Stack Consultation",
+    "company": "CloudBridge Global",
+    "createdAt": "2026-10-05T09:45:00Z"
+  },
+  {
+    "id": "inq-101",
+    "name": "Alex Vance",
+    "email": "alex@techventure.io",
+    "message": "Interested in developing a real-time cross-platform mobile application with Expo and Next.js backend.",
+    "projectType": "Mobile Development",
+    "company": "TechVenture Labs",
+    "createdAt": "2026-10-01T14:20:00Z"
+  },
+  {
+    "id": "1791885130322-tljpf7",
+    "name": "Engineering Test Client",
+    "email": "test.client@example.com",
+    "message": "Inquiry to verify contact storage persistence and integrity.",
+    "projectType": "Full-Stack Web App",
+    "company": "Acme Corp",
+    "createdAt": "2026-10-13T09:52:10.322Z"
+  }
+]

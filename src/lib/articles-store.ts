@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { queryD1 } from "./cloudflare-d1";
+import { validateArticleQuality } from "./article-quality-gate";
 
 export interface ArticleSource {
   title: string;
@@ -58,11 +59,12 @@ export interface ArticleRun {
   articleSlug?: string;
   score?: number;
   reason?: string;
+  summary?: string;
   startedAt: string;
   completedAt: string;
 }
 
-// Initial preserved articles + high-value practical problem-solving articles
+// Initial preserved articles representing verified problem-solving case studies
 export const initialArticles: Article[] = [
   {
     id: "art-1",
@@ -178,20 +180,20 @@ export const initialArticles: Article[] = [
     wordCount: 510,
     status: "published",
     sources: [
-      { title: "Next.js App Router Architecture", url: "https://nextjs.org/docs/app" },
-      { title: "TypeScript Official Documentation", url: "https://www.typescriptlang.org/docs/" },
+      { title: "Next.js App Router Documentation", url: "https://nextjs.org/docs" },
+      { title: "TypeScript Handbook", url: "https://www.typescriptlang.org/docs/" },
     ],
     content: [
       {
         heading: "Project overview",
         paragraphs: [
-          "Praxivon is described as an educational website that gives students structured learning paths and access to courses. The project description also names visual academic progress tracking.",
-          "The listed technology stack is Next.js, TypeScript, Tailwind CSS and Node.js. The available project information does not document the course data model, user authentication, content-management approach or server implementation, so those details are intentionally left out.",
+          "Praxivon is described as an educational platform with structured learning paths. The project record identifies Next.js and TypeScript with Tailwind CSS and Node.js.",
+          "The available project description focuses on the student interface and learning paths. It does not describe course authoring, user accounts, progress storage or deployment architecture, so those implementation details are not inferred here.",
         ],
       },
       {
         heading: "Documented functionality",
-        paragraphs: ["The project record describes three main product areas:"],
+        paragraphs: ["The project description identifies three user-facing areas:"],
         bullets: [
           "Structured learning paths",
           "Course access",
@@ -201,222 +203,17 @@ export const initialArticles: Article[] = [
       {
         heading: "Technology choices",
         paragraphs: [
-          "Next.js and TypeScript are identified as the core web technologies, with Tailwind CSS and Node.js also listed. The portfolio describes the interface as SEO-friendly, but does not provide performance measurements or further architectural specifics.",
+          "Next.js and TypeScript are listed alongside Tailwind CSS and Node.js. The record does not describe rendering strategy, styling boundaries or backend services, so the case study limits itself to the named technologies.",
         ],
       },
       {
-        heading: "Structuring learning routes for discovery",
+        heading: "Structuring learning platforms",
         paragraphs: [
-          "Educational platforms benefit substantially from hierarchical routing and server-rendered metadata. Enabling prospective learners to discover curricula through search requires semantic HTML and clean nested layout boundaries.",
+          "Creating high-impact educational tooling demands clear visual feedback and performant page loads. Using Next.js enables rich pre-rendering for course discovery while maintaining fluid interactive progress states.",
         ],
       },
     ],
     relatedProjects: ["praxivon"],
-  },
-  {
-    id: "art-4",
-    slug: "handling-state-and-performance-in-react-native-expo-lists",
-    title: "Optimizing List Rendering and State Updates in React Native and Expo",
-    description: "How to diagnose frame drops in large mobile feeds, replace unoptimized ScrollViews with FlashList or memoized FlatLists, and isolate state mutations.",
-    publishedAt: "2026-10-04",
-    updatedAt: "2026-10-04",
-    category: "Mobile Development",
-    tags: ["React Native", "Expo", "Performance", "TypeScript", "Mobile"],
-    difficulty: "Advanced",
-    readingTime: "6 min read",
-    wordCount: 940,
-    status: "published",
-    sources: [
-      { title: "React Native FlatList Performance Guide", url: "https://reactnative.dev/docs/optimizing-flatlist-configuration" },
-      { title: "Shopify FlashList Documentation", url: "https://shopify.github.io/flash-list/" },
-    ],
-    content: [
-      {
-        heading: "The Problem & Symptoms",
-        paragraphs: [
-          "When rendering hundreds of catalog items or transactions in React Native apps built with Expo, users often report stuttering during fast scrolling, UI thread freezes, or high memory consumption on lower-end devices.",
-          "The root cause typically stems from rendering un-virtualized items in a standard ScrollView, creating inline arrow functions within renderItem, or passing non-primitive unstable props that trigger cascades of re-renders.",
-        ],
-      },
-      {
-        heading: "Diagnosis & Profiling",
-        paragraphs: [
-          "To locate the rendering bottleneck:",
-          "1. Use the React DevTools Profiler in Flipper or the Expo development build to identify which list cells re-render during scroll.",
-          "2. Check if parent state updates (such as a search input or a filter toggle) cause the entire list data array to be recreated with fresh object references.",
-        ],
-        bullets: [
-          "Identify unneeded cell re-renders using React.memo with custom equality comparison.",
-          "Check windowSize, maxToRenderPerBatch, and removeClippedSubviews on FlatList.",
-          "Ensure keyExtractor returns a stable unique string (never index).",
-        ],
-      },
-      {
-        heading: "The Solution: Memoized Cell Pattern",
-        paragraphs: [
-          "Isolate the cell component and ensure callbacks are stabilized with useCallback. Here is a production-tested pattern for high-performance listing:",
-        ],
-        codeBlock: {
-          language: "tsx",
-          caption: "Memoized list item with stable callback references",
-          code: `import React, { useCallback, memo } from 'react';
-import { FlatList, View, Text, StyleSheet } from 'react-native';
-
-interface ProductItemProps {
-  id: string;
-  title: string;
-  price: number;
-  onSelect: (id: string) => void;
-}
-
-// 1. Memoize item to prevent re-render when other items update
-const ProductItem = memo(({ id, title, price, onSelect }: ProductItemProps) => {
-  return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.price}>{"$" + price}</Text>
-    </View>
-  );
-});
-
-export function ProductCatalog({ items }: { items: ProductItemProps[] }) {
-  const handleSelect = useCallback((id: string) => {
-    // Stable handler without re-creating closure
-  }, []);
-
-  const renderItem = useCallback(({ item }: { item: ProductItemProps }) => (
-    <ProductItem {...item} onSelect={handleSelect} />
-  ), [handleSelect]);
-
-  const keyExtractor = useCallback((item: ProductItemProps) => item.id, []);
-
-  return (
-    <FlatList
-      data={items}
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      initialNumToRender={10}
-      maxToRenderPerBatch={10}
-      windowSize={5}
-      removeClippedSubviews={true}
-    />
-  );
-}`,
-        },
-      },
-      {
-        heading: "Verification & Verification Checklist",
-        paragraphs: [
-          "Verify the fix by running an FPS monitor in the Expo development client. Stable 60 FPS scrolling should be achieved across both Android and iOS without ballooning memory usage.",
-        ],
-        bullets: [
-          "Verify UI thread remains at 58-60 FPS under rapid swipe.",
-          "Ensure memory usage levels off rather than climbing monotonically.",
-          "Confirm layout calculations don't shift when new items stream into view.",
-        ],
-      },
-    ],
-    relatedProjects: ["amtech-shop", "leftly"],
-  },
-  {
-    id: "art-5",
-    slug: "nextjs-15-caching-and-server-actions-best-practices",
-    title: "Demystifying Next.js 15 Caching: Server Actions, fetch, and Dynamic Boundaries",
-    description: "A practical guide to Next.js 15 cache defaults, handling revalidatePath properly in Server Actions, and avoiding unexpected stale data.",
-    publishedAt: "2026-10-08",
-    updatedAt: "2026-10-08",
-    category: "Web Development",
-    tags: ["Next.js", "React", "TypeScript", "Full-Stack", "Backend"],
-    difficulty: "Advanced",
-    readingTime: "7 min read",
-    wordCount: 1120,
-    status: "published",
-    sources: [
-      { title: "Next.js 15 Release Notes & Upgrade Guide", url: "https://nextjs.org/blog/next-15" },
-      { title: "React 19 Server Actions Documentation", url: "https://react.dev/reference/rsc/server-actions" },
-    ],
-    content: [
-      {
-        heading: "The Shift in Next.js 15 Caching Defaults",
-        paragraphs: [
-          "In Next.js 14 and earlier, fetch requests were cached by default (force-cache), often leading to confusing scenarios where mutations appeared to execute on the server but the client continued displaying obsolete UI data.",
-          "Next.js 15 changed this paradigm: fetch requests, GET Route Handlers, and client navigations default to 'no-store' unless explicitly configured. While this improves data freshness out-of-the-box, developers must understand how to selectively cache expensive operations without introducing stale-reads after Server Actions.",
-        ],
-      },
-      {
-        heading: "Diagnosing Stale UI After Server Actions",
-        paragraphs: [
-          "When a user submits a form or performs a critical mutation, the UI must immediately reflect the new state. A common bug is updating the database in a Server Action but forgetting to invalidate either the route segment or the specific tag.",
-        ],
-        bullets: [
-          "Always call revalidatePath(path) or revalidateTag(tag) inside the Server Action after successful database persistence.",
-          "Return structured outcome objects { success: boolean, error?: string } rather than relying solely on redirects.",
-          "Ensure optimistic updates use React 19's useOptimistic hook when instant feedback is required.",
-        ],
-      },
-      {
-        heading: "Production Server Action Implementation",
-        paragraphs: [
-          "Here is an idiomatic Next.js 15 Server Action demonstrating schema validation with Zod, database transaction handling, and tag-based revalidation:",
-        ],
-        codeBlock: {
-          language: "ts",
-          caption: "Secure Next.js 15 Server Action with tag revalidation",
-          code: `'use server';
-
-import { revalidateTag } from 'next/cache';
-import { z } from 'zod';
-
-const UpdateSchema = z.object({
-  projectId: z.string().min(1),
-  status: z.enum(['pending', 'active', 'completed']),
-});
-
-export type ActionState = {
-  success: boolean;
-  message?: string;
-  error?: string;
-};
-
-export async function updateProjectStatus(prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const rawData = {
-    projectId: formData.get('projectId'),
-    status: formData.get('status'),
-  };
-
-  const validation = UpdateSchema.safeParse(rawData);
-  if (!validation.success) {
-    return {
-      success: false,
-      error: 'Invalid input parameters provided.',
-    };
-  }
-
-  try {
-    const { projectId, status } = validation.data;
-    
-    // Execute database mutation
-    // await db.projects.update({ where: { id: projectId }, data: { status } });
-
-    // Purge only the specific cached tag, preserving un-affected routes
-    revalidateTag('project-' + projectId);
-    revalidateTag('projects-list');
-
-    return { success: true, message: 'Status updated successfully.' };
-  } catch (err) {
-    return { success: false, error: 'Database transaction failed. Please retry.' };
-  }
-}`,
-        },
-      },
-      {
-        heading: "Key Takeaways for Full-Stack Systems",
-        paragraphs: [
-          "By decoupling data mutation from layout rendering and leveraging explicit cache tags (revalidateTag), Next.js applications remain blazingly fast while guaranteeing data integrity across collaborative and multi-user views.",
-        ],
-      },
-    ],
-    relatedProjects: ["praxivon", "technical-systems"],
   },
 ];
 
@@ -424,63 +221,43 @@ const ARTICLES_FILE_PATH = path.join(process.cwd(), "src/lib/data/articles.json"
 const TOPICS_FILE_PATH = path.join(process.cwd(), "src/lib/data/topics.json");
 const RUNS_FILE_PATH = path.join(process.cwd(), "src/lib/data/runs.json");
 
-// In-memory fallback / cache to guarantee instantaneous SSR performance and resiliency
 let memoryArticles: Article[] = [...initialArticles];
-let memoryTopics: ArticleTopic[] = [
-  { id: "top-1", topic: "React Native Expo Audio & Media Background Playback on Android 14", category: "Mobile Development", priority: 8, used: false },
-  { id: "top-2", topic: "Full-Stack End-to-End Type Safety with Zod and TypeScript Route Handlers", category: "Software Engineering", priority: 9, used: false },
-  { id: "top-3", topic: "Next.js Dynamic Route Metadata Generation and Canonical SEO Best Practices", category: "Web Development", priority: 8, used: false },
-  { id: "top-4", topic: "PostgreSQL Connection Pooling and Latency Reduction in Serverless Next.js", category: "Backend Engineering", priority: 9, used: false },
-];
+let memoryTopics: ArticleTopic[] = [];
 let memoryRuns: ArticleRun[] = [];
 
-async function ensureFileInitialized<T>(filePath: string, defaultData: T): Promise<T> {
-  try {
-    const raw = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(raw) as T;
-  } catch {
-    try {
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, JSON.stringify(defaultData, null, 2), "utf-8");
-    } catch {
-      // Ephemeral disk or readonly fallback
-    }
-    return defaultData;
-  }
+async function saveArticleToD1(article: Article): Promise<boolean> {
+  const res = await queryD1(
+    `INSERT OR REPLACE INTO articles (
+      id, slug, title, description, published_at, updated_at,
+      category, tags, content, related_projects, sources,
+      status, word_count, difficulty, reading_time, is_automated
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      article.id,
+      article.slug,
+      article.title,
+      article.description,
+      article.publishedAt,
+      article.updatedAt,
+      article.category,
+      JSON.stringify(article.tags || []),
+      JSON.stringify(article.content || []),
+      JSON.stringify(article.relatedProjects || []),
+      JSON.stringify(article.sources || []),
+      article.status,
+      article.wordCount || 600,
+      article.difficulty || "Intermediate",
+      article.readingTime || "5 min read",
+      article.isAutomated ? 1 : 0,
+    ]
+  );
+  return res.success;
 }
 
-async function saveArticleToD1(article: Article): Promise<void> {
-  try {
-    await queryD1(
-      `INSERT OR REPLACE INTO articles (
-        id, slug, title, description, published_at, updated_at,
-        category, tags, content, related_projects, sources,
-        status, word_count, difficulty, reading_time, is_automated
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        article.id,
-        article.slug,
-        article.title,
-        article.description,
-        article.publishedAt,
-        article.updatedAt,
-        article.category,
-        JSON.stringify(article.tags || []),
-        JSON.stringify(article.content || []),
-        JSON.stringify(article.relatedProjects || []),
-        JSON.stringify(article.sources || []),
-        article.status,
-        article.wordCount || 600,
-        article.difficulty || "Intermediate",
-        article.readingTime || "5 min read",
-        article.isAutomated ? 1 : 0,
-      ]
-    );
-  } catch (err) {
-    console.warn("[ArticlesStore] Could not write article to D1:", err);
-  }
-}
-
+/**
+ * Get all articles from primary persistent storage (D1)
+ * Used by private dashboard for draft review and management
+ */
 export async function getAllArticles(): Promise<Article[]> {
   try {
     const d1Res = await queryD1("SELECT * FROM articles ORDER BY published_at DESC");
@@ -495,16 +272,19 @@ export async function getAllArticles(): Promise<Article[]> {
         category: row.category,
         tags: typeof row.tags === "string" ? JSON.parse(row.tags) : row.tags || ["Engineering"],
         content: typeof row.content === "string" ? JSON.parse(row.content) : row.content || [],
-        relatedProjects: typeof row.related_projects === "string" ? JSON.parse(row.related_projects) : row.relatedProjects || [],
+        relatedProjects:
+          typeof row.related_projects === "string"
+            ? JSON.parse(row.related_projects)
+            : row.relatedProjects || [],
         sources: typeof row.sources === "string" ? JSON.parse(row.sources) : row.sources || [],
-        status: row.status || "published",
+        status: row.status || "draft",
         wordCount: Number(row.word_count || row.wordCount || 600),
         difficulty: row.difficulty || "Intermediate",
         readingTime: row.reading_time || row.readingTime || "5 min read",
         isAutomated: Boolean(row.is_automated ?? row.isAutomated),
       }));
 
-      // Merge with initialArticles to ensure preserved slugs are never lost
+      // Guarantee preserved baseline articles are always present
       const combined = [...d1Articles];
       for (const init of initialArticles) {
         if (!combined.some((a) => a.slug === init.slug)) {
@@ -516,18 +296,20 @@ export async function getAllArticles(): Promise<Article[]> {
       return combined;
     }
   } catch (err) {
-    console.warn("[ArticlesStore] D1 read error, falling back:", err);
+    console.warn("[ArticlesStore] Primary D1 read exception:", err);
   }
 
-  // Auto-seed initial articles to D1 if D1 had 0 rows
+  // Auto-seed initial articles to D1 if D1 is empty
   for (const init of initialArticles) {
     saveArticleToD1(init).catch(() => {});
   }
 
+  // Local file fallback for development
   try {
-    const fileArticles = await ensureFileInitialized<Article[]>(ARTICLES_FILE_PATH, initialArticles);
-    if (Array.isArray(fileArticles) && fileArticles.length > 0) {
-      const combined = [...fileArticles];
+    const raw = await fs.readFile(ARTICLES_FILE_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const combined = [...parsed];
       for (const init of initialArticles) {
         if (!combined.some((a) => a.slug === init.slug)) {
           combined.push(init);
@@ -537,11 +319,17 @@ export async function getAllArticles(): Promise<Article[]> {
       return combined;
     }
   } catch {
-    // Fall back to memory
+    // Memory fallback
   }
+
   return memoryArticles;
 }
 
+/**
+ * HUMAN-ONLY PUBLIC GATEWAY:
+ * Returns ONLY articles where status === "published".
+ * Drafts are strictly excluded from public site and sitemap.
+ */
 export async function getPublishedArticles(): Promise<Article[]> {
   const all = await getAllArticles();
   return all
@@ -549,113 +337,236 @@ export async function getPublishedArticles(): Promise<Article[]> {
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }
 
+/**
+ * Public article detail lookup
+ * Returns ONLY published articles; returns null for drafts.
+ */
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
   const all = await getAllArticles();
   return all.find((a) => a.slug === slug && a.status === "published") ?? null;
+}
+
+/**
+ * Dashboard lookup to retrieve any article (including drafts)
+ */
+export async function getDashboardArticleBySlug(slug: string): Promise<Article | null> {
+  const all = await getAllArticles();
+  return all.find((a) => a.slug === slug) ?? null;
 }
 
 export async function getRelatedArticles(article: Article, limit = 3): Promise<Article[]> {
   const all = await getPublishedArticles();
   return all
     .filter((a) => a.slug !== article.slug)
-    .filter((a) => 
-      a.category === article.category ||
-      a.tags.some((t) => article.tags.includes(t)) ||
-      a.relatedProjects.some((p) => article.relatedProjects.includes(p))
+    .filter(
+      (a) =>
+        a.category === article.category ||
+        a.tags.some((t) => article.tags.includes(t)) ||
+        a.relatedProjects.some((p) => article.relatedProjects.includes(p))
     )
     .slice(0, limit);
 }
 
-export async function saveArticle(newArticle: Article): Promise<void> {
+/**
+ * Save an article to persistent store
+ */
+export async function saveArticle(article: Article): Promise<void> {
   const all = await getAllArticles();
-  const existingIndex = all.findIndex((a) => a.slug === newArticle.slug || a.id === newArticle.id);
-  
+  const existingIndex = all.findIndex((a) => a.slug === article.slug || a.id === article.id);
+
   if (existingIndex >= 0) {
-    all[existingIndex] = { ...all[existingIndex], ...newArticle, updatedAt: new Date().toISOString().split("T")[0] };
+    all[existingIndex] = {
+      ...all[existingIndex],
+      ...article,
+      updatedAt: new Date().toISOString().split("T")[0],
+    };
   } else {
-    all.unshift(newArticle);
+    all.unshift(article);
   }
-  
+
   memoryArticles = all;
 
   // Persist to Cloudflare D1
-  await saveArticleToD1(newArticle);
+  const persisted = await saveArticleToD1(article);
+  if (!persisted && process.env.NODE_ENV === "production") {
+    console.error("[ArticlesStore] Critical: Failed writing article to Cloudflare D1 in production.");
+  }
 
+  // Sync to local file when writable
   try {
     await fs.mkdir(path.dirname(ARTICLES_FILE_PATH), { recursive: true });
     await fs.writeFile(ARTICLES_FILE_PATH, JSON.stringify(all, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[ArticlesStore] Could not write to disk, updated in-memory store:", err);
-  }
-}
-
-export async function getArticleTopics(): Promise<ArticleTopic[]> {
-  try {
-    const topics = await ensureFileInitialized<ArticleTopic[]>(TOPICS_FILE_PATH, memoryTopics);
-    memoryTopics = topics;
-    return topics;
   } catch {
-    return memoryTopics;
+    // Ephemeral disk in serverless
   }
 }
 
-export async function markTopicUsed(topicId: string): Promise<void> {
-  const topics = await getArticleTopics();
-  const target = topics.find((t) => t.id === topicId);
-  if (target) {
-    target.used = true;
-    target.usedAt = new Date().toISOString();
-    try {
-      await fs.writeFile(TOPICS_FILE_PATH, JSON.stringify(topics, null, 2), "utf-8");
-    } catch {
-      // In-memory fallback
-    }
-  }
-}
+/**
+ * ENFORCE HUMAN-ONLY PUBLICATION RULE
+ * Authenticated human approval operation to publish an existing draft.
+ */
+export async function approveAndPublishDraft(
+  slug: string,
+  reviewedData?: Partial<Article>,
+  adminUser = "admin"
+): Promise<{ success: boolean; article?: Article; error?: string }> {
+  const existingDraft = await getDashboardArticleBySlug(slug);
 
-export async function recordArticleRun(run: ArticleRun): Promise<void> {
-  memoryRuns.unshift(run);
+  if (!existingDraft) {
+    return { success: false, error: `Draft with slug "${slug}" not found.` };
+  }
+
+  if (existingDraft.status === "published") {
+    return { success: false, error: "This article is already published." };
+  }
+
+  const existingAll = await getAllArticles();
+
+  // Merge reviewed modifications
+  const candidateArticle: Article = {
+    ...existingDraft,
+    ...(reviewedData || {}),
+    id: existingDraft.id,
+    slug: existingDraft.slug, // Preserve verified slug
+    status: "published", // Explicit human approval transition
+    publishedAt: existingDraft.publishedAt || new Date().toISOString().split("T")[0],
+    updatedAt: new Date().toISOString().split("T")[0],
+  };
+
+  // Run full server-side quality gate validation
+  const quality = validateArticleQuality(candidateArticle, existingAll, true);
+  if (!quality.valid) {
+    return {
+      success: false,
+      error: `Article failed quality gate: ${quality.errors.join("; ")}`,
+    };
+  }
+
+  // Persist published article
+  await saveArticle(candidateArticle);
+
+  // Record audit log
   try {
     await queryD1(
-      "INSERT INTO article_runs (id, topic, started_at, model, status, score, summary) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [run.id || `run-${Date.now()}`, run.topic, run.startedAt, run.model, run.status, run.score || 0, run.summary || ""]
+      "INSERT INTO approval_audit_logs (id, slug, action, performed_at, performed_by, notes) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        `audit-${Date.now()}`,
+        candidateArticle.slug,
+        "APPROVE_AND_PUBLISH",
+        new Date().toISOString(),
+        adminUser,
+        `Article approved with word count ${candidateArticle.wordCount}`,
+      ]
     );
   } catch (err) {
-    console.warn("[ArticlesStore] Could not record run in D1:", err);
+    console.warn("[ArticlesStore] Could not record approval audit log:", err);
   }
 
+  return { success: true, article: candidateArticle };
+}
+
+/**
+ * Reject a draft from the review queue
+ */
+export async function rejectDraft(
+  slug: string,
+  reason = "Rejected by user",
+  adminUser = "admin"
+): Promise<boolean> {
+  const draft = await getDashboardArticleBySlug(slug);
+  if (!draft) return false;
+
+  // Record rejection audit log
   try {
-    const runs = await ensureFileInitialized<ArticleRun[]>(RUNS_FILE_PATH, memoryRuns);
-    runs.unshift(run);
-    await fs.writeFile(RUNS_FILE_PATH, JSON.stringify(runs.slice(0, 50), null, 2), "utf-8");
+    await queryD1(
+      "INSERT INTO approval_audit_logs (id, slug, action, performed_at, performed_by, notes) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        `audit-${Date.now()}`,
+        slug,
+        "REJECT_DRAFT",
+        new Date().toISOString(),
+        adminUser,
+        reason,
+      ]
+    );
   } catch {
-    // In-memory fallback
+    // Audit log fallback
   }
+
+  return await deleteArticle(slug);
 }
 
 export async function deleteArticle(slug: string): Promise<boolean> {
+  const allBefore = await getAllArticles();
+  const exists = allBefore.some((a) => a.slug === slug);
+  if (!exists) {
+    return false;
+  }
+
   try {
     await queryD1("DELETE FROM articles WHERE slug = ?", [slug]);
   } catch (err) {
     console.warn("[ArticlesStore] Could not delete article in D1:", err);
   }
 
-  const all = await getAllArticles();
-  const filtered = all.filter((a) => a.slug !== slug);
-  if (filtered.length === all.length) {
-    return false;
-  }
+  const filtered = allBefore.filter((a) => a.slug !== slug);
   memoryArticles = filtered;
+
   try {
     await fs.writeFile(ARTICLES_FILE_PATH, JSON.stringify(filtered, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[ArticlesStore] Could not persist article deletion to disk:", err);
+  } catch {
+    // Serverless read-only
   }
   return true;
 }
 
-export async function addSuggestedTopic(topic: string, category: string, priority = 8): Promise<ArticleTopic> {
+export async function getArticleTopics(): Promise<ArticleTopic[]> {
+  try {
+    const res = await queryD1("SELECT * FROM article_topics ORDER BY priority DESC");
+    if (res.success && res.results && res.results.length > 0) {
+      return res.results.map((r: any) => ({
+        id: r.id,
+        topic: r.topic,
+        category: r.category,
+        priority: Number(r.priority || 8),
+        used: Boolean(r.used),
+        usedAt: r.used_at || r.usedAt,
+      }));
+    }
+  } catch {
+    // Fall back to local
+  }
+
+  try {
+    const raw = await fs.readFile(TOPICS_FILE_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // Memory fallback
+  }
+
+  return memoryTopics;
+}
+
+export async function markTopicUsed(topicId: string): Promise<void> {
+  try {
+    await queryD1("UPDATE article_topics SET used = 1, used_at = ? WHERE id = ?", [
+      new Date().toISOString(),
+      topicId,
+    ]);
+  } catch {
+    // In-memory fallback
+  }
+
   const topics = await getArticleTopics();
+  const target = topics.find((t) => t.id === topicId);
+  if (target) {
+    target.used = true;
+    target.usedAt = new Date().toISOString();
+  }
+}
+
+export async function addSuggestedTopic(topic: string, category: string, priority = 8): Promise<ArticleTopic> {
   const newTopic: ArticleTopic = {
     id: `top-${Date.now()}`,
     topic,
@@ -663,20 +574,66 @@ export async function addSuggestedTopic(topic: string, category: string, priorit
     priority,
     used: false,
   };
-  topics.unshift(newTopic);
-  memoryTopics = topics;
+
   try {
-    await fs.writeFile(TOPICS_FILE_PATH, JSON.stringify(topics, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[ArticlesStore] Could not persist topic to disk:", err);
+    await queryD1(
+      "INSERT OR REPLACE INTO article_topics (id, topic, category, priority, used) VALUES (?, ?, ?, ?, ?)",
+      [newTopic.id, newTopic.topic, newTopic.category, newTopic.priority, 0]
+    );
+  } catch {
+    // Memory fallback
   }
+
+  memoryTopics.unshift(newTopic);
   return newTopic;
+}
+
+export async function recordArticleRun(run: ArticleRun): Promise<void> {
+  memoryRuns.unshift(run);
+  try {
+    await queryD1(
+      "INSERT INTO article_runs (id, topic, started_at, model, status, score, summary) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [
+        run.id || `run-${Date.now()}`,
+        run.topic,
+        run.startedAt,
+        run.model,
+        run.status,
+        run.score || 0,
+        run.summary || run.reason || "",
+      ]
+    );
+  } catch (err) {
+    console.warn("[ArticlesStore] Could not record run in D1:", err);
+  }
+
+  try {
+    await fs.mkdir(path.dirname(RUNS_FILE_PATH), { recursive: true });
+    await fs.writeFile(RUNS_FILE_PATH, JSON.stringify(memoryRuns.slice(0, 50), null, 2), "utf-8");
+  } catch {
+    // Ephemeral disk
+  }
 }
 
 export async function getArticleRuns(): Promise<ArticleRun[]> {
   try {
-    return await ensureFileInitialized<ArticleRun[]>(RUNS_FILE_PATH, memoryRuns);
+    const res = await queryD1("SELECT * FROM article_runs ORDER BY started_at DESC LIMIT 50");
+    if (res.success && res.results && res.results.length > 0) {
+      return res.results.map((r: any) => ({
+        id: r.id,
+        runDate: (r.started_at || "").split("T")[0],
+        topic: r.topic,
+        status: r.status,
+        model: r.model,
+        score: Number(r.score || 0),
+        reason: r.summary,
+        summary: r.summary,
+        startedAt: r.started_at,
+        completedAt: r.started_at,
+      }));
+    }
   } catch {
-    return memoryRuns;
+    // Fall back to memory
   }
+  return memoryRuns;
 }

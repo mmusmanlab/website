@@ -36,6 +36,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { MainContent } from '@/components/main-content';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,9 +54,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-grow pt-16">
+        <MainContent>
           {children}
-        </main>
+        </MainContent>
         <Footer />
         <Toaster />
       </body>

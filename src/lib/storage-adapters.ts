@@ -52,7 +52,10 @@ export function getCloudflareReadinessStatus(): CloudflareConfig {
     d1DatabaseName: process.env.CLOUDFLARE_D1_DATABASE_NAME || "mmusmanlab-db",
     r2BucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME || "mmusmanlab-assets",
     r2PublicDomain: process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://assets.mmusmanlab.com",
-    isD1Configured: Boolean(process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_API_TOKEN || (globalThis as any).DB),
+    isD1Configured: Boolean(
+      (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_D1_DATABASE_ID && process.env.CLOUDFLARE_API_TOKEN) ||
+      (globalThis as any).DB
+    ),
     isR2Configured: Boolean(process.env.CLOUDFLARE_R2_ACCESS_KEY_ID && process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY),
     imageUploadMode: process.env.IMAGE_STORAGE_DRIVER === "r2" ? "r2" : "local",
   };

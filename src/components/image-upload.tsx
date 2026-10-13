@@ -238,7 +238,6 @@ export function ImageUpload({
       {value && (
         <div className="relative rounded-2xl border border-border/80 bg-card overflow-hidden p-3 flex flex-col sm:flex-row items-center gap-4">
           <div className="relative w-28 h-20 rounded-xl overflow-hidden bg-muted/40 shrink-0 border border-border/50">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={value}
               alt="Preview"

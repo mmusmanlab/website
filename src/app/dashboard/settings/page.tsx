@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS articles (
   content TEXT NOT NULL,
   related_projects TEXT NOT NULL,
   sources TEXT,
-  status TEXT NOT NULL DEFAULT 'published',
+  status TEXT NOT NULL DEFAULT 'draft',
   word_count INTEGER DEFAULT 0,
   difficulty TEXT DEFAULT 'Intermediate',
   reading_time TEXT DEFAULT '5 min read',

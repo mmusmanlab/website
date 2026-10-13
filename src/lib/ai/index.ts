@@ -1,12 +1,24 @@
-import { generateWithGemini } from "./gemini";
+import { generateWithGemini, isGeminiConfigured } from "./gemini";
 
 export interface AIProvider {
-  generateStructuredContent: (prompt: string, systemInstruction?: string) => Promise<string>;
+  name: string;
+  isAvailable: () => boolean;
+  generateStructuredContent: (
+    prompt: string,
+    systemInstruction?: string,
+    timeoutMs?: number
+  ) => Promise<string>;
 }
 
 // Extensible provider implementation - default to Gemini using @google/genai
 export const defaultAIProvider: AIProvider = {
-  generateStructuredContent: async (prompt: string, systemInstruction?: string) => {
-    return await generateWithGemini(prompt, systemInstruction);
+  name: "Google Gemini",
+  isAvailable: () => isGeminiConfigured(),
+  generateStructuredContent: async (
+    prompt: string,
+    systemInstruction?: string,
+    timeoutMs?: number
+  ) => {
+    return await generateWithGemini(prompt, systemInstruction, undefined, timeoutMs);
   },
 };

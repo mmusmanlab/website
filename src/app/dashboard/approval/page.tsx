@@ -108,21 +108,25 @@ export default function ApprovalQueuePage() {
 
   const handleApprove = async (draft: any) => {
     try {
+      setStatusMsg(`Validating and publishing '${draft.title}'...`);
       const res = await fetch("/api/dashboard/ai/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "approve",
+          slug: draft.slug,
           articleData: draft,
         }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setStatusMsg(`'${draft.title}' approved and published live!`);
         await loadData();
+      } else {
+        throw new Error(data.error || "Approval failed");
       }
     } catch (err: any) {
-      setStatusMsg(`Error: ${err.message}`);
+      setStatusMsg(`Approval Error: ${err.message}`);
     }
   };
 

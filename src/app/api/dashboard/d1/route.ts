@@ -1,26 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isDashboardAuthorized } from "@/lib/dashboard-auth";
+import { isDashboardAuthorized, validateSameOrigin } from "@/lib/dashboard-auth";
 import { getD1Status, runD1Migration, queryD1 } from "@/lib/cloudflare-d1";
-import { transformAllDataToD1 } from "@/lib/d1-transformer";
 
 export const dynamic = "force-dynamic";
 
+// Disallow destructive statements from arbitrary query execution
+const FORBIDDEN_SQL_PATTERNS = [
+  /\bDROP\s+TABLE\b/i,
+  /\bDROP\s+DATABASE\b/i,
+  /\bDROP\s+INDEX\b/i,
+  /\bTRUNCATE\b/i,
+  /\bALTER\s+TABLE\b/i,
+  /\bATTACH\s+DATABASE\b/i,
+  /\bDETACH\s+DATABASE\b/i,
+  /\bVACUUM\b/i,
+];
+
 export async function GET(request: NextRequest) {
   if (!isDashboardAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized access to database administration." }, { status: 401 });
   }
 
   try {
     const status = await getD1Status();
 
-    // Query live table row counts
-    const [articlesCountRes, projectsCountRes, inquiriesCountRes, topicsCountRes, runsCountRes] = await Promise.all([
-      queryD1("SELECT COUNT(*) as count FROM articles"),
-      queryD1("SELECT COUNT(*) as count FROM projects"),
-      queryD1("SELECT COUNT(*) as count FROM contact_inquiries"),
-      queryD1("SELECT COUNT(*) as count FROM article_topics"),
-      queryD1("SELECT COUNT(*) as count FROM article_runs"),
-    ]);
+    // Query live table row counts safely
+    const [articlesCountRes, projectsCountRes, inquiriesCountRes, topicsCountRes, runsCountRes] =
+      await Promise.all([
+        queryD1("SELECT COUNT(*) as count FROM articles").catch(() => ({ results: [{ count: 0 }] })),
+        queryD1("SELECT COUNT(*) as count FROM projects").catch(() => ({ results: [{ count: 0 }] })),
+        queryD1("SELECT COUNT(*) as count FROM contact_inquiries").catch(() => ({ results: [{ count: 0 }] })),
+        queryD1("SELECT COUNT(*) as count FROM article_topics").catch(() => ({ results: [{ count: 0 }] })),
+        queryD1("SELECT COUNT(*) as count FROM article_runs").catch(() => ({ results: [{ count: 0 }] })),
+      ]);
 
     const stats = {
       articles: Number(articlesCountRes.results?.[0]?.count ?? 0),
@@ -29,24 +41,6 @@ export async function GET(request: NextRequest) {
       topics: Number(topicsCountRes.results?.[0]?.count ?? 0),
       runs: Number(runsCountRes.results?.[0]?.count ?? 0),
     };
-
-    // Auto-transform if tables are currently at zero rows
-    if (stats.projects === 0 && stats.articles === 0) {
-      try {
-        await transformAllDataToD1();
-        // Refresh counts
-        const [aRes, pRes, iRes] = await Promise.all([
-          queryD1("SELECT COUNT(*) as count FROM articles"),
-          queryD1("SELECT COUNT(*) as count FROM projects"),
-          queryD1("SELECT COUNT(*) as count FROM contact_inquiries"),
-        ]);
-        stats.articles = Number(aRes.results?.[0]?.count ?? stats.articles);
-        stats.projects = Number(pRes.results?.[0]?.count ?? stats.projects);
-        stats.inquiries = Number(iRes.results?.[0]?.count ?? stats.inquiries);
-      } catch (err) {
-        console.warn("[D1 Auto-Transform] Notice:", err);
-      }
-    }
 
     return NextResponse.json({
       success: true,
@@ -68,25 +62,45 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!isDashboardAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized access to database administration." }, { status: 401 });
+  }
+
+  if (!validateSameOrigin(request)) {
+    return NextResponse.json({ error: "Invalid request origin (CSRF protection)." }, { status: 403 });
   }
 
   try {
     const body = await request.json();
     const action = body.action;
 
+    // 1. Run safe schema migration
     if (action === "migrate") {
       const result = await runD1Migration();
       return NextResponse.json(result);
     }
 
-    if (action === "transform_all" || action === "seed") {
-      const result = await transformAllDataToD1();
-      return NextResponse.json(result);
-    }
-
+    // 2. Controlled diagnostic test query (strictly blocks destructive statements)
     if (action === "test_query") {
-      const sql = typeof body.sql === "string" ? body.sql : "SELECT * FROM articles LIMIT 3";
+      const sql = typeof body.sql === "string" ? body.sql.trim() : "SELECT * FROM articles LIMIT 3";
+
+      // Prevent multi-statement query chains
+      if ((sql.match(/;/g) || []).length > 1) {
+        return NextResponse.json(
+          { error: "Multi-statement SQL chains are forbidden for security." },
+          { status: 400 }
+        );
+      }
+
+      // Safeguard against destructive SQL
+      for (const pattern of FORBIDDEN_SQL_PATTERNS) {
+        if (pattern.test(sql)) {
+          return NextResponse.json(
+            { error: "Destructive SQL statements (DROP, TRUNCATE, ALTER, VACUUM) are strictly forbidden." },
+            { status: 403 }
+          );
+        }
+      }
+
       const start = Date.now();
       const res = await queryD1(sql, body.params || []);
       const latency = Date.now() - start;
@@ -102,7 +116,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
+    return NextResponse.json({ error: `Unknown database action: "${action}"` }, { status: 400 });
   } catch (error: any) {
     console.error("[D1 Action Error]", error);
     return NextResponse.json(

@@ -129,7 +129,7 @@ export default function DashboardDatabasePage() {
     {
       "binding": "DB",
       "database_name": "mmusmanlab-db",
-      "database_id": "mmusmanlab-db"
+      "database_id": "<your-d1-database-uuid>" // Replace with your actual D1 UUID from Cloudflare Dashboard
     }
   ],
   "r2_buckets": [

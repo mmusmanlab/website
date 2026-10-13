@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { ImageUpload } from "@/components/image-upload";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -180,30 +181,25 @@ export default function NewProjectPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-                Technologies Used (comma separated)
-              </label>
-              <Input
-                value={technologiesInput}
-                onChange={(e) => setTechnologiesInput(e.target.value)}
-                placeholder="React Native, Expo, TypeScript, Firebase"
-                className="h-11 rounded-xl text-sm"
-              />
-            </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+              Technologies Used (comma separated)
+            </label>
+            <Input
+              value={technologiesInput}
+              onChange={(e) => setTechnologiesInput(e.target.value)}
+              placeholder="React Native, Expo, TypeScript, Firebase"
+              className="h-11 rounded-xl text-sm"
+            />
+          </div>
 
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-                Screenshot Image URL
-              </label>
-              <Input
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://picsum.photos/seed/amtech/800/600"
-                className="h-11 rounded-xl text-sm"
-              />
-            </div>
+          <div className="pt-2">
+            <ImageUpload
+              value={image}
+              onChange={setImage}
+              label="Project Screenshot / Media"
+              helperText="Upload image locally to /public/uploads or browse library. R2 will activate when billing is added."
+            />
           </div>
 
           <div>

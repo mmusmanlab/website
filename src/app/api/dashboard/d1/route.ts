@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isDashboardAuthorized } from "@/lib/dashboard-auth";
 import { getD1Status, runD1Migration, queryD1 } from "@/lib/cloudflare-d1";
-import { initialArticles, saveArticle } from "@/lib/articles-store";
-import { initialProjects, saveProject } from "@/lib/projects-store";
+import { transformAllDataToD1 } from "@/lib/d1-transformer";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +13,12 @@ export async function GET(request: NextRequest) {
   try {
     const status = await getD1Status();
 
-    // Query table counts
-    const [articlesCountRes, projectsCountRes, inquiriesCountRes, runsCountRes] = await Promise.all([
+    // Query live table row counts
+    const [articlesCountRes, projectsCountRes, inquiriesCountRes, topicsCountRes, runsCountRes] = await Promise.all([
       queryD1("SELECT COUNT(*) as count FROM articles"),
       queryD1("SELECT COUNT(*) as count FROM projects"),
       queryD1("SELECT COUNT(*) as count FROM contact_inquiries"),
+      queryD1("SELECT COUNT(*) as count FROM article_topics"),
       queryD1("SELECT COUNT(*) as count FROM article_runs"),
     ]);
 
@@ -26,8 +26,27 @@ export async function GET(request: NextRequest) {
       articles: Number(articlesCountRes.results?.[0]?.count ?? 0),
       projects: Number(projectsCountRes.results?.[0]?.count ?? 0),
       inquiries: Number(inquiriesCountRes.results?.[0]?.count ?? 0),
+      topics: Number(topicsCountRes.results?.[0]?.count ?? 0),
       runs: Number(runsCountRes.results?.[0]?.count ?? 0),
     };
+
+    // Auto-transform if tables are currently at zero rows
+    if (stats.projects === 0 && stats.articles === 0) {
+      try {
+        await transformAllDataToD1();
+        // Refresh counts
+        const [aRes, pRes, iRes] = await Promise.all([
+          queryD1("SELECT COUNT(*) as count FROM articles"),
+          queryD1("SELECT COUNT(*) as count FROM projects"),
+          queryD1("SELECT COUNT(*) as count FROM contact_inquiries"),
+        ]);
+        stats.articles = Number(aRes.results?.[0]?.count ?? stats.articles);
+        stats.projects = Number(pRes.results?.[0]?.count ?? stats.projects);
+        stats.inquiries = Number(iRes.results?.[0]?.count ?? stats.inquiries);
+      } catch (err) {
+        console.warn("[D1 Auto-Transform] Notice:", err);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -35,6 +54,8 @@ export async function GET(request: NextRequest) {
       stats,
       databaseName: "mmusmanlab-db",
       timestamp: new Date().toISOString(),
+      storageDriver: process.env.IMAGE_STORAGE_DRIVER || "local",
+      r2Status: "future_pending_billing",
     });
   } catch (error: any) {
     console.error("[D1 Status API Error]", error);
@@ -59,24 +80,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result);
     }
 
-    if (action === "seed") {
-      let seededArticlesCount = 0;
-      let seededProjectsCount = 0;
-
-      for (const art of initialArticles) {
-        await saveArticle(art);
-        seededArticlesCount++;
-      }
-
-      for (const proj of initialProjects) {
-        await saveProject(proj);
-        seededProjectsCount++;
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: `Successfully seeded ${seededArticlesCount} articles and ${seededProjectsCount} projects into mmusmanlab-db!`,
-      });
+    if (action === "transform_all" || action === "seed") {
+      const result = await transformAllDataToD1();
+      return NextResponse.json(result);
     }
 
     if (action === "test_query") {
@@ -98,8 +104,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   } catch (error: any) {
+    console.error("[D1 Action Error]", error);
     return NextResponse.json(
-      { error: error?.message || "Failed executing D1 action" },
+      { error: error?.message || "Failed to execute D1 action" },
       { status: 500 }
     );
   }

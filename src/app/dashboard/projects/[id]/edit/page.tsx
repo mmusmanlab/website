@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { ImageUpload } from "@/components/image-upload";
 
 export default function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -209,33 +210,29 @@ export default function EditProjectPage({ params }: { params: Promise<{ id: stri
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-                Technologies (comma separated)
-              </label>
-              <Input
-                value={Array.isArray(project.technologies) ? project.technologies.join(", ") : ""}
-                onChange={(e) =>
-                  setProject({
-                    ...project,
-                    technologies: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                  })
-                }
-                className="h-11 rounded-xl text-sm"
-              />
-            </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+              Technologies (comma separated)
+            </label>
+            <Input
+              value={Array.isArray(project.technologies) ? project.technologies.join(", ") : ""}
+              onChange={(e) =>
+                setProject({
+                  ...project,
+                  technologies: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                })
+              }
+              className="h-11 rounded-xl text-sm"
+            />
+          </div>
 
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-                Screenshot Image URL
-              </label>
-              <Input
-                value={project.image || ""}
-                onChange={(e) => setProject({ ...project, image: e.target.value })}
-                className="h-11 rounded-xl text-sm"
-              />
-            </div>
+          <div className="pt-2">
+            <ImageUpload
+              value={project.image || ""}
+              onChange={(newUrl) => setProject({ ...project, image: newUrl })}
+              label="Project Screenshot / Media"
+              helperText="Upload image locally to /public/uploads or browse library. R2 will activate when billing is added."
+            />
           </div>
 
           <div>

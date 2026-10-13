@@ -18,6 +18,9 @@ import {
   HardDrive,
   UploadCloud,
   Code2,
+  Sparkles,
+  FolderOpen,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,15 +33,18 @@ export default function DashboardDatabasePage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  // Local uploads state
+  const [uploadsCount, setUploadsCount] = useState<number>(0);
+
   // SQL Console state
   const [customSql, setCustomSql] = useState("SELECT * FROM articles LIMIT 3");
   const [queryResult, setQueryResult] = useState<any>(null);
   const [copiedWrangler, setCopiedWrangler] = useState(false);
   const [copiedSchema, setCopiedSchema] = useState(false);
-  const [activeTableTab, setActiveTableTab] = useState<string>("articles");
 
   useEffect(() => {
     loadD1Status();
+    loadUploadsCount();
   }, []);
 
   const loadD1Status = async () => {
@@ -56,6 +62,18 @@ export default function DashboardDatabasePage() {
     }
   };
 
+  const loadUploadsCount = async () => {
+    try {
+      const res = await fetch("/api/upload");
+      const json = await res.json();
+      if (res.ok && json.files) {
+        setUploadsCount(json.files.length);
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
   const handleAction = async (action: string) => {
     setActionLoading(action);
     setFeedback(null);
@@ -69,6 +87,7 @@ export default function DashboardDatabasePage() {
       if (res.ok && json.success) {
         setFeedback({ type: "success", message: json.message });
         await loadD1Status();
+        await loadUploadsCount();
       } else {
         setFeedback({ type: "error", message: json.error || json.message || "Action failed." });
       }
@@ -150,7 +169,7 @@ export default function DashboardDatabasePage() {
             </Badge>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
-            Zero-latency serverless SQLite edge database on Cloudflare with schema migration &amp; data sync.
+            Serverless relational SQLite edge database on Cloudflare with automated data transformation &amp; local image uploads.
           </p>
         </div>
 
@@ -166,11 +185,16 @@ export default function DashboardDatabasePage() {
           </Button>
           <Button
             size="sm"
-            onClick={() => handleAction("migrate")}
-            disabled={actionLoading === "migrate"}
+            onClick={() => handleAction("transform_all")}
+            disabled={actionLoading === "transform_all"}
             className="rounded-xl font-bold bg-primary text-primary-foreground shadow-sm"
           >
-            <Play size={14} className="mr-1.5" /> Run Migration
+            {actionLoading === "transform_all" ? (
+              <RefreshCw size={14} className="animate-spin mr-1.5" />
+            ) : (
+              <Sparkles size={14} className="mr-1.5" />
+            )}
+            Transform All Data to D1
           </Button>
         </div>
       </div>
@@ -205,6 +229,9 @@ export default function DashboardDatabasePage() {
                 >
                   {status?.connected ? "ACTIVE & READY" : "DISCONNECTED"}
                 </Badge>
+                <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
+                  MODE: {status?.mode?.toUpperCase() || "ACTIVE"}
+                </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {status?.message || "Cloudflare D1 client active and operational."}
@@ -216,52 +243,70 @@ export default function DashboardDatabasePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleAction("seed")}
-              disabled={actionLoading === "seed"}
+              onClick={() => handleAction("migrate")}
+              disabled={actionLoading === "migrate"}
               className="rounded-xl text-xs font-bold"
             >
-              {actionLoading === "seed" ? (
+              {actionLoading === "migrate" ? (
                 <RefreshCw size={12} className="animate-spin mr-1.5" />
               ) : (
-                <Layers size={12} className="mr-1.5" />
+                <Play size={12} className="mr-1.5" />
               )}
-              Sync &amp; Seed Initial Data
+              Run Schema Migration
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleAction("transform_all")}
+              disabled={actionLoading === "transform_all"}
+              className="rounded-xl text-xs font-bold bg-primary text-primary-foreground"
+            >
+              <Layers size={12} className="mr-1.5" />
+              Transform Existing Data
             </Button>
           </div>
         </div>
 
-        {/* Status Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-border/50">
-          <div className="p-4 rounded-2xl bg-muted/20 border border-border/40">
+        {/* Live Status Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-4 border-t border-border/50">
+          <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/40">
             <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
-              Articles Table
+              Articles
             </div>
             <div className="text-2xl font-black mt-1 text-foreground">
               {stats?.articles ?? 0} <span className="text-xs font-normal text-muted-foreground">rows</span>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-muted/20 border border-border/40">
+          <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/40">
             <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
-              Projects Table
+              Projects
             </div>
             <div className="text-2xl font-black mt-1 text-foreground">
               {stats?.projects ?? 0} <span className="text-xs font-normal text-muted-foreground">rows</span>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-muted/20 border border-border/40">
+          <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/40">
             <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
-              Inquiries Table
+              Inquiries
             </div>
             <div className="text-2xl font-black mt-1 text-foreground">
               {stats?.inquiries ?? 0} <span className="text-xs font-normal text-muted-foreground">rows</span>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-muted/20 border border-border/40">
+          <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/40">
             <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
-              Audit Runs Table
+              Topics
+            </div>
+            <div className="text-2xl font-black mt-1 text-foreground">
+              {stats?.topics ?? 0} <span className="text-xs font-normal text-muted-foreground">rows</span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/40">
+            <div className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
+              Audit Runs
             </div>
             <div className="text-2xl font-black mt-1 text-foreground">
               {stats?.runs ?? 0} <span className="text-xs font-normal text-muted-foreground">rows</span>
@@ -269,6 +314,75 @@ export default function DashboardDatabasePage() {
           </div>
         </div>
       </Card>
+
+      {/* Storage & Image Upload Strategy Architecture */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Local Storage Driver (Active Now) */}
+        <Card className="p-6 rounded-3xl bg-card border-border/70 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <HardDrive size={18} />
+              </div>
+              <div>
+                <h3 className="font-bold text-base">Local Image Storage (Active Now)</h3>
+                <p className="text-[11px] text-muted-foreground">Driver: <code>/public/uploads</code></p>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold">
+              ACTIVE
+            </Badge>
+          </div>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            All project screenshots, architecture diagrams, and WYSIWYG editor media are saved directly to local storage at zero cost with no billing required.
+          </p>
+
+          <div className="p-3 rounded-2xl bg-muted/20 border border-border/50 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={14} className="text-emerald-400" />
+              <span className="font-semibold text-foreground">Uploads Directory:</span>
+              <code className="text-muted-foreground text-[11px]">/public/uploads</code>
+            </div>
+            <span className="font-mono text-emerald-400 font-bold">{uploadsCount} files stored</span>
+          </div>
+        </Card>
+
+        {/* Cloudflare R2 Storage (Kept for Future) */}
+        <Card className="p-6 rounded-3xl bg-card border-border/70 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Cloud size={18} />
+              </div>
+              <div>
+                <h3 className="font-bold text-base">Cloudflare R2 (Future Step)</h3>
+                <p className="text-[11px] text-muted-foreground">Bucket: <code>mmusmanlab-assets</code></p>
+              </div>
+            </div>
+            <Badge variant="outline" className="text-muted-foreground border-border/80 text-[10px] font-bold">
+              PENDING BILLING
+            </Badge>
+          </div>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Kept on standby. Cloudflare requires an active billing method on your account before enabling R2 bucket provisioning. When you enable billing later, R2 seamlessly activates via <code>cloudflareR2Adapter</code> without touching code.
+          </p>
+
+          <div className="p-3 rounded-2xl bg-neutral-950 font-mono text-[11px] text-neutral-300 flex items-center justify-between">
+            <span className="truncate">Driver Binding: R2_ASSETS</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={copyWrangler}
+              className="h-6 text-[11px] px-2 text-neutral-400 hover:text-white"
+            >
+              {copiedWrangler ? "Copied" : "Copy Config"}
+            </Button>
+          </div>
+        </Card>
+      </div>
 
       {/* SQL Query Console */}
       <section className="space-y-4">
@@ -308,7 +422,16 @@ export default function DashboardDatabasePage() {
               onClick={() => setCustomSql("SELECT id, name, email, project_type, created_at FROM contact_inquiries LIMIT 5;")}
               className="h-7 text-xs px-2.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300"
             >
-              Contact Messages
+              Contact Inquiries
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCustomSql("SELECT id, topic, tech_stack, used FROM article_topics LIMIT 5;")}
+              className="h-7 text-xs px-2.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300"
+            >
+              Topics
             </Button>
             <Button
               type="button"
@@ -400,42 +523,29 @@ export default function DashboardDatabasePage() {
           </div>
         </Card>
 
-        {/* Cloudflare R2 Storage Roadmap */}
+        {/* Cloudflare Deployment Readiness */}
         <Card className="p-6 md:p-7 rounded-3xl bg-card border-border/70 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Cloud size={20} className="text-primary" />
-              <h3 className="font-bold text-base">Cloudflare R2 Storage (Next Step)</h3>
+              <ShieldCheck size={20} className="text-emerald-500" />
+              <h3 className="font-bold text-base">Full-Stack Production Ready</h3>
             </div>
-            <Badge variant="outline" className="border-primary/30 text-primary text-[10px] font-bold">
-              Ready
+            <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px] font-bold">
+              Configured
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            As planned, after D1 database integration, R2 object storage (<code>mmusmanlab-assets</code>) is architected for zero-egress fee image uploads:
+            Both the application stores and the Cloudflare D1 adapters are decoupled. Your app reads from and writes to <code>mmusmanlab-db</code>, with graceful fallbacks and automatic synchronization.
           </p>
 
           <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/50 space-y-1.5 text-xs">
             <div className="font-semibold text-foreground flex items-center gap-2">
-              <UploadCloud size={14} className="text-primary" />
-              Bucket: <code>mmusmanlab-assets</code>
+              <Database size={14} className="text-primary" />
+              Database: <code>mmusmanlab-db</code>
             </div>
             <p className="text-muted-foreground text-[11px]">
-              Ready in <code>src/lib/storage-adapters.ts</code> (cloudflareR2Adapter). Prepared for project screenshots, article banners, and media uploads.
+              Schema covers articles, projects, inquiries, topics, and audit runs with foreign-safe relational keys.
             </p>
-          </div>
-
-          <div className="p-3 rounded-xl bg-neutral-950 font-mono text-[11px] text-neutral-300 flex items-center justify-between">
-            <span className="truncate">Bucket Binding: R2_ASSETS</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={copyWrangler}
-              className="h-6 text-[11px] px-2 text-neutral-400 hover:text-white"
-            >
-              {copiedWrangler ? "Copied" : "Copy Config"}
-            </Button>
           </div>
         </Card>
       </div>

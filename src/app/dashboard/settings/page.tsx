@@ -152,18 +152,18 @@ CREATE TABLE IF NOT EXISTS contact_inquiries (
           <Card className="p-6 rounded-3xl bg-card border-border/70 space-y-3">
             <div className="flex items-center justify-between">
               <Badge variant="outline" className="border-primary/30 text-primary font-bold">
-                Cloudflare R2
+                Image Storage
               </Badge>
               <Badge variant="secondary" className="text-[10px] font-bold">
-                S3 Compatible
+                Local Active / R2 Future
               </Badge>
             </div>
-            <h3 className="font-bold text-base">Media &amp; File Storage / R2 Bucket</h3>
+            <h3 className="font-bold text-base">Media Uploads &amp; Local Storage</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Stores project screenshots, diagram images, and custom uploaded media without egress fees.
+              Images are stored locally in <code>/public/uploads</code> without billing requirements. Cloudflare R2 (<code>mmusmanlab-assets</code>) is reserved for future activation.
             </p>
             <div className="pt-2 text-[11px] font-mono text-muted-foreground">
-              Bucket: <code>mmusmanlab-assets</code>
+              Driver: <code>local</code> &bull; R2 Bucket: <code>mmusmanlab-assets</code>
             </div>
           </Card>
         </div>

@@ -18,6 +18,8 @@ import {
   Copy,
   Check,
   Undo2,
+  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +46,8 @@ export function WysiwygEditor({
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
   const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const historyRef = useRef<string[]>([value]);
   const historyIndexRef = useRef<number>(0);
 
@@ -153,6 +157,41 @@ export function WysiwygEditor({
       const replacement = `[${selectedText}](${url})`;
       const updated = value.substring(0, start) + replacement + value.substring(end);
       updateContent(updated);
+    }
+  };
+
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        const textarea = textareaRef.current;
+        const start = textarea?.selectionStart ?? value.length;
+        const end = textarea?.selectionEnd ?? value.length;
+        const alt = file.name.replace(/\.[^/.]+$/, "");
+        const imageMarkdown = `\n\n![${alt}](${data.url})\n\n`;
+        const updated = value.substring(0, start) + imageMarkdown + value.substring(end);
+        updateContent(updated);
+      } else {
+        alert(data.error || "Image upload failed");
+      }
+    } catch (err: any) {
+      alert(`Upload error: ${err.message}`);
+    } finally {
+      setIsUploadingImage(false);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
     }
   };
 
@@ -387,6 +426,22 @@ export function WysiwygEditor({
           >
             <Link2 size={15} />
           </button>
+          <button
+            type="button"
+            title="Upload and Insert Image (Local Storage)"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={isUploadingImage}
+            className="p-1.5 hover:bg-muted hover:text-foreground rounded-lg transition-colors text-primary"
+          >
+            <ImageIcon size={15} className={isUploadingImage ? "animate-pulse" : ""} />
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageFile}
+          />
 
           <span className="w-px h-4 bg-border/80 mx-1" />
 

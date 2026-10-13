@@ -1,11 +1,17 @@
 /**
- * Cloudflare D1 (SQL Database) and Cloudflare R2 (Object Storage) Abstraction Adapters
- * Configured for mmusmanlab-db and mmusmanlab-assets
+ * Cloudflare D1 (SQL Database) & Image Storage Abstraction Adapters
+ * Configured for mmusmanlab-db
+ * 
+ * - Primary Database: Cloudflare D1 (mmusmanlab-db)
+ * - Current Media Uploads: Local Storage Driver (/public/uploads)
+ * - Future Media Uploads: Cloudflare R2 (mmusmanlab-assets) reserved for when billing is enabled
  */
 
 import { Article } from "./articles-store";
 import { Project } from "./projects-store";
 import { queryD1, getD1Status, runD1Migration } from "./cloudflare-d1";
+import fs from "fs/promises";
+import path from "path";
 
 export interface DatabaseAdapter {
   // Articles
@@ -38,15 +44,17 @@ export interface CloudflareConfig {
   r2PublicDomain: string;
   isD1Configured: boolean;
   isR2Configured: boolean;
+  imageUploadMode: "local" | "r2";
 }
 
 export function getCloudflareReadinessStatus(): CloudflareConfig {
   return {
     d1DatabaseName: process.env.CLOUDFLARE_D1_DATABASE_NAME || "mmusmanlab-db",
     r2BucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME || "mmusmanlab-assets",
-    r2PublicDomain: process.env.CLOUDFLARE_R2_PUBLIC_URL || "",
+    r2PublicDomain: process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://assets.mmusmanlab.com",
     isD1Configured: Boolean(process.env.CLOUDFLARE_D1_DATABASE_ID || process.env.CLOUDFLARE_API_TOKEN || (globalThis as any).DB),
     isR2Configured: Boolean(process.env.CLOUDFLARE_R2_ACCESS_KEY_ID && process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY),
+    imageUploadMode: process.env.IMAGE_STORAGE_DRIVER === "r2" ? "r2" : "local",
   };
 }
 
@@ -118,7 +126,7 @@ export const cloudflareD1Adapter: DatabaseAdapter = {
   },
 
   async saveProject(project: Project): Promise<Project> {
-    const lastModified = new Date().toISOString().split("T")[0];
+    const lastModified = project.lastModified || new Date().toISOString().split("T")[0];
     await queryD1(
       `INSERT OR REPLACE INTO projects (
         id, name, short_description, full_description, overview,
@@ -156,7 +164,7 @@ export const cloudflareD1Adapter: DatabaseAdapter = {
 
   async saveInquiry(inquiry: any): Promise<void> {
     await queryD1(
-      `INSERT INTO contact_inquiries (id, name, email, message, project_type, company, created_at)
+      `INSERT OR REPLACE INTO contact_inquiries (id, name, email, message, project_type, company, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         inquiry.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -172,7 +180,45 @@ export const cloudflareD1Adapter: DatabaseAdapter = {
 };
 
 /**
- * Cloudflare R2 Object Storage Adapter (Preparation for upcoming image upload)
+ * Local Image Storage Adapter (Active driver for now)
+ * Stores uploaded image files inside /public/uploads
+ */
+export const localImageAdapter: StorageAdapter = {
+  async uploadFile(file) {
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").toLowerCase();
+    const filename = `${Date.now()}-${sanitizedName}`;
+    const filePath = path.join(uploadDir, filename);
+
+    const buffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer as ArrayBuffer);
+    await fs.writeFile(filePath, buffer);
+
+    const url = `/uploads/${filename}`;
+    return { url, key: filename };
+  },
+
+  async deleteFile(key: string) {
+    try {
+      const uploadDir = path.join(process.cwd(), "public", "uploads");
+      const safeKey = path.basename(key);
+      await fs.unlink(path.join(uploadDir, safeKey));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  getFileUrl(key: string) {
+    const safeKey = path.basename(key);
+    return `/uploads/${safeKey}`;
+  },
+};
+
+/**
+ * Cloudflare R2 Object Storage Adapter
+ * Kept ready for future use once Cloudflare billing is activated.
  */
 export const cloudflareR2Adapter: StorageAdapter = {
   async uploadFile(file) {
@@ -180,7 +226,7 @@ export const cloudflareR2Adapter: StorageAdapter = {
     const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://assets.mmusmanlab.com";
     const key = `uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
 
-    // Ready for R2 S3-compatible client or worker binding
+    // Cloudflare Worker R2 native binding
     const globalAny = globalThis as any;
     if (globalAny.R2_ASSETS && typeof globalAny.R2_ASSETS.put === "function") {
       await globalAny.R2_ASSETS.put(key, file.buffer, {
@@ -189,11 +235,8 @@ export const cloudflareR2Adapter: StorageAdapter = {
       return { url: `${publicUrl}/${key}`, key };
     }
 
-    // Fallback URL
-    return {
-      url: `https://picsum.photos/seed/${encodeURIComponent(file.name)}/800/600`,
-      key,
-    };
+    // Fallback if R2 credentials not active yet -> upload locally
+    return await localImageAdapter.uploadFile(file);
   },
 
   async deleteFile(key: string) {
@@ -202,7 +245,7 @@ export const cloudflareR2Adapter: StorageAdapter = {
       await globalAny.R2_ASSETS.delete(key);
       return true;
     }
-    return true;
+    return await localImageAdapter.deleteFile(key);
   },
 
   getFileUrl(key: string) {
@@ -210,6 +253,12 @@ export const cloudflareR2Adapter: StorageAdapter = {
     return `${publicUrl}/${key}`;
   },
 };
+
+/**
+ * Default active storage adapter
+ */
+export const storageAdapter: StorageAdapter =
+  process.env.IMAGE_STORAGE_DRIVER === "r2" ? cloudflareR2Adapter : localImageAdapter;
 
 // Row deserialization helpers
 function safeParseJson(raw: any, fallback: any) {

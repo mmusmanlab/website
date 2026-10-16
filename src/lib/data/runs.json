@@ -1,13 +1,13 @@
 [
   {
-    "id": "run-1791885127734",
-    "runDate": "2026-10-13",
+    "id": "run-1792170341439",
+    "runDate": "2026-10-16",
     "topic": "Next.js 15 & React 19: Nested Suspense Streaming with Resilient Error Boundary Fallbacks",
     "status": "success",
     "model": "gemini-2.5-flash",
     "score": 75,
     "reason": "Discovered and queued topic for review: Strong alignment with core stack (next.js, react, streaming).",
-    "startedAt": "2026-10-13T09:52:07.663Z",
-    "completedAt": "2026-10-13T09:52:07.734Z"
+    "startedAt": "2026-10-16T17:05:41.362Z",
+    "completedAt": "2026-10-16T17:05:41.439Z"
   }
 ]

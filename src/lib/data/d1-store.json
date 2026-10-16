@@ -151,6 +151,38 @@
       "performed_at": "2026-10-13T09:52:09.717Z",
       "performed_by": "admin",
       "notes": "Rejected due to insufficient depth"
+    },
+    "audit-1792170300659": {
+      "id": "audit-1792170300659",
+      "slug": "test-approval-workflow-article",
+      "action": "APPROVE_AND_PUBLISH",
+      "performed_at": "2026-10-16T17:05:00.659Z",
+      "performed_by": "admin-tester",
+      "notes": "Article approved with word count 420"
+    },
+    "audit-1792170301611": {
+      "id": "audit-1792170301611",
+      "slug": "test-rejected-draft",
+      "action": "REJECT_DRAFT",
+      "performed_at": "2026-10-16T17:05:01.611Z",
+      "performed_by": "admin",
+      "notes": "Rejected due to insufficient depth"
+    },
+    "audit-1792170342539": {
+      "id": "audit-1792170342539",
+      "slug": "test-approval-workflow-article",
+      "action": "APPROVE_AND_PUBLISH",
+      "performed_at": "2026-10-16T17:05:42.539Z",
+      "performed_by": "admin-tester",
+      "notes": "Article approved with word count 420"
+    },
+    "audit-1792170342971": {
+      "id": "audit-1792170342971",
+      "slug": "test-rejected-draft",
+      "action": "REJECT_DRAFT",
+      "performed_at": "2026-10-16T17:05:42.971Z",
+      "performed_by": "admin",
+      "notes": "Rejected due to insufficient depth"
     }
   }
 }

@@ -72,6 +72,7 @@ describe("MMUsmanLab Audit & Acceptance Criteria Test Suite", () => {
   test("3. Missing dashboard secrets fail closed", () => {
     delete process.env.DASHBOARD_PASSKEY;
     delete process.env.CONTACT_DASHBOARD_PASSKEY;
+    delete process.env.SESSION_SECRET;
 
     // Must not accept any passkeys, including previous defaults like Noor@4321
     assert.equal(isValidDashboardPasskey("Noor@4321"), false);
